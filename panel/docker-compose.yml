@@ -1,0 +1,25 @@
+services:
+  phvm:
+    build: .
+    container_name: phvm
+    restart: unless-stopped
+    privileged: true          # needed for QEMU/KVM + network bridging inside the container
+    ports:
+      - "${PHVM_PORT:-5050}:${PHVM_PORT:-5050}"
+    devices:
+      - "/dev/kvm:/dev/kvm"   # remove this line if the host has no /dev/kvm — panel falls back to slow TCG
+    environment:
+      PHVM_PORT: "${PHVM_PORT:-5050}"
+      PHVM_SERVERS_DIR: /srv/phvm-servers
+    volumes:
+      - phvm_db:/opt/phvm  # persists phvm.db, vm_instances/ (VM disk images), .secret_key across rebuilds
+      # Minecraft / Bot servers run as Docker containers on the HOST's Docker (Pterodactyl-style):
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Server data. MUST be the same path on the host and inside this container — the containers
+      # are started by the host's Docker, which resolves bind-mount paths on the host.
+      - /srv/phvm-servers:/srv/phvm-servers
+      # Optional: keep backups on the host so they survive `docker compose down -v`
+      - /var/lib/phvm/backups:/opt/phvm/backups
+
+volumes:
+  phvm_db:

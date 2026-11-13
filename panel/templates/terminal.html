@@ -1,0 +1,647 @@
+{% extends "base.html" %}
+{% block title %}Shell — {{ vm.name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span>
+<a href="{{ url_for('manage_vm', vm_id=vm.vm_id) }}">{{ vm.name }}</a>
+<span class="sep">›</span> <span class="current">Shell</span>
+{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css">
+<style>
+    .shell-page.fullscreen {
+        position: fixed; inset: 0; z-index: 500;
+        background: var(--bg-primary); padding: 16px;
+        display: flex; flex-direction: column;
+    }
+    .shell-page.fullscreen .page-header,
+    .shell-page.fullscreen .shell-toolbar { flex-shrink: 0; }
+
+    .shell-toolbar {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        margin-bottom: 10px; padding: 8px 10px;
+        background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    }
+    .shell-toolbar .sep-v { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+    .qc-btn {
+        font-family: var(--font-mono); font-size: 11.5px;
+        background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary);
+        padding: 5px 10px; border-radius: 6px; cursor: pointer; transition: all 0.15s;
+    }
+    .qc-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+    .tb-icon-btn {
+        width: 30px; height: 30px; border-radius: 7px; border: 1px solid var(--border);
+        background: var(--bg-hover); color: var(--text-secondary); cursor: pointer;
+        display: flex; align-items: center; justify-content: center; font-size: 12.5px;
+        transition: all 0.15s;
+    }
+    .tb-icon-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+    .tb-icon-btn.active { border-color: var(--accent); color: var(--accent-hover); background: var(--accent-dim); }
+
+    .shell-wrap {
+        background: #0c0c0e;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 560px;
+        box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset, 0 12px 28px -18px rgba(0,0,0,0.6);
+    }
+    .shell-page.fullscreen .shell-wrap { height: calc(100vh - 32px); }
+    .shell-bar {
+        background: #111113;
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+    .shell-bar .dot { width: 10px; height: 10px; border-radius: 50%; }
+    #xterm-wrap { flex: 1 1 auto; min-height: 0; padding: 10px; position: relative; overflow: hidden; display: flex; }
+    #xterm { flex: 1 1 auto; min-width: 0; min-height: 0; position: relative; }
+    #xterm .terminal.xterm { height: 100% !important; }
+    #xterm .xterm-viewport {
+        overflow-y: auto !important;
+    }
+    #xterm .xterm-viewport::-webkit-scrollbar { width: 10px; }
+    #xterm .xterm-viewport::-webkit-scrollbar-track { background: transparent; }
+    #xterm .xterm-viewport::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 6px; }
+    #xterm .xterm-viewport::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+    .shell-status { margin-left: auto; font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 7px; font-family: var(--font-mono); }
+    .status-led { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); position: relative; flex-shrink: 0; }
+    .status-led.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-led.connected::after {
+        content: ''; position: absolute; inset: -4px; border-radius: 50%;
+        border: 1.5px solid var(--success); animation: ledPing 1.8s cubic-bezier(0,0,0.2,1) infinite;
+    }
+    .status-led.connecting { background: var(--warning); animation: ledPulse 0.9s ease-in-out infinite; }
+    .status-led.error { background: var(--danger); }
+    @keyframes ledPing { 0% { transform: scale(0.6); opacity: 0.8; } 75%,100% { transform: scale(2.2); opacity: 0; } }
+    @keyframes ledPulse { 50% { opacity: 0.35; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="shell-page" id="shellPage">
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <div>
+        <h1><i class="fas fa-terminal"></i> {{ vm.name }}</h1>
+        <p>Web SSH shell · {% if vm.public_ip %}{{ vm.public_ip }}:22{% else %}port {{ vm.ssh_port }}{% endif %}</p>
+    </div>
+    <div class="btn-group">
+        <button class="btn btn-primary" id="btnConnect" onclick="connectShell()"><i class="fas fa-plug"></i> Connect</button>
+        <button class="btn btn-secondary" id="btnDisconnect" onclick="disconnectShell()" style="display:none;"><i class="fas fa-times"></i> Disconnect</button>
+        <a href="{{ url_for('manage_vm', vm_id=vm.vm_id) }}" class="btn btn-secondary">Back</a>
+    </div>
+</div>
+
+{% if vm.is_iso %}
+<div class="shell-toolbar" style="background:rgba(245,158,11,0.08);border-color:rgba(245,158,11,0.35);">
+    <i class="fas fa-triangle-exclamation" style="color:#f59e0b;"></i>
+    <span style="font-size:13px;color:var(--text-secondary);">
+        This is a manual installer template (e.g. Proxmox VE) — there's no cloud-init, so no SSH login exists
+        until you finish the install yourself.
+        {% if vm.vnc_console_port %}Connect a VNC client to <code>{{ vm.ssh_host or vm.public_ip or '127.0.0.1' }}:{{ vm.vnc_console_port }}</code> to run the installer{% else %}Connect a VNC client to finish the installer{% endif %}
+        and set your own root password there, then enter it below and hit Connect.
+    </span>
+</div>
+{% endif %}
+
+<div class="shell-toolbar" id="credBar" style="{% if not vm.is_iso %}display:none;{% endif %}">
+    <label style="font-size:12px;color:var(--text-muted);">Username</label>
+    <input type="text" id="credUsername" class="form-control" placeholder="root" style="width:120px;padding:5px 8px;font-size:12.5px;">
+    <label style="font-size:12px;color:var(--text-muted);">Password</label>
+    <input type="password" id="credPassword" class="form-control" placeholder="password you set in the installer" style="width:220px;padding:5px 8px;font-size:12.5px;">
+    <span style="font-size:11.5px;color:var(--text-muted);">Saved for next time once it connects successfully.</span>
+</div>
+<div style="margin-bottom:10px;">
+    <button class="qc-btn" type="button" onclick="toggleCredBar()" id="btnToggleCreds" style="{% if vm.is_iso %}display:none;{% endif %}">
+        <i class="fas fa-key"></i> Use different SSH username/password
+    </button>
+</div>
+
+<div class="shell-toolbar" id="snipBar" style="margin-bottom:6px;">
+    <span style="font-size:12px;color:var(--text-muted);">My commands</span>
+    <span id="snipList" style="display:contents;"></span>
+    <button class="qc-btn" type="button" onclick="addSnippet()" title="Save a command you use often (stored in this browser)"><i class="fas fa-plus"></i> Save command</button>
+</div>
+<div class="shell-toolbar">
+    <button class="qc-btn" onclick="sendQuick('ls -la\n')">ls -la</button>
+    <button class="qc-btn" onclick="sendQuick('htop\n')">htop</button>
+    <button class="qc-btn" onclick="sendQuick('df -h\n')">df -h</button>
+    <button class="qc-btn" onclick="sendQuick('free -h\n')">free -h</button>
+    <button class="qc-btn" onclick="sendQuick('systemctl status\n')">systemctl status</button>
+    <button class="qc-btn" onclick="sendQuick('reboot\n', true)" style="color:#fca5a5;" title="Reboots the VM">reboot</button>
+    <div class="sep-v"></div>
+    <button class="tb-icon-btn" id="btnClear" onclick="clearTerm()" title="Clear screen"><i class="fas fa-eraser"></i></button>
+    <button class="tb-icon-btn" id="btnCopy" onclick="copySelection()" title="Copy selection"><i class="fas fa-copy"></i></button>
+    <button class="tb-icon-btn" id="btnFontMinus" onclick="adjustFont(-1)" title="Smaller text">A-</button>
+    <button class="tb-icon-btn" id="btnFontPlus" onclick="adjustFont(1)" title="Larger text">A+</button>
+    <button class="tb-icon-btn" id="btnTheme" onclick="cycleTheme()" title="Change colours"><i class="fas fa-palette"></i></button>
+    <button class="tb-icon-btn" id="btnLog" onclick="downloadLog()" title="Download this session as a text file"><i class="fas fa-file-arrow-down"></i></button>
+    <button class="tb-icon-btn" id="btnFullscreen" onclick="toggleFullscreen()" title="Fullscreen"><i class="fas fa-expand"></i></button>
+    <div class="sep-v"></div>
+    <button class="qc-btn" id="btnSshx" onclick="launchSshx()" title="Get a live, shareable sshx.io link — real multi-cursor terminal sharing"><i class="fas fa-share-alt"></i> Share (sshx)</button>
+    <span id="sshxLinkBox" style="display:none;align-items:center;gap:6px;font-family:var(--font-mono);font-size:12px;"></span>
+</div>
+
+<div class="shell-wrap">
+    <div class="shell-bar">
+        <span class="dot" style="background:#ef4444;"></span>
+        <span class="dot" style="background:#f59e0b;"></span>
+        <span class="dot" style="background:#22c55e;"></span>
+        <span style="margin-left:8px;font-weight:500;">root@{{ vm.name }}</span>
+        <span id="pingBadge" title="Round trip browser → panel → browser" style="margin-left:auto;margin-right:12px;font-size:12px;opacity:.85;">⚡ – ms</span>
+        <span class="shell-status" id="shellStatus"><span class="status-led" id="statusLed"></span>Disconnected</span>
+    </div>
+    <div id="xterm-wrap"><div id="xterm"></div></div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
+<script>
+const VM_ID = "{{ vm.vm_id }}";
+let sessionId = null, pollTimer = null, term, fitAddon, fontSize = 14, reconnectAttempts = 0;
+
+// Bumped every time the poll loop is deliberately restarted (connect,
+// clear, disconnect). A poll loop that's already in-flight (mid-fetch,
+// or mid-write) when that happens captures the OLD generation number at
+// start and checks it again after every await — if it no longer matches
+// pollGen, that iteration is a "zombie" from before the restart and must
+// not write stale output or reschedule itself. Without this, clearTerm()
+// could only cancel the *next* scheduled poll (via clearTimeout), not an
+// already-in-flight fetch — so that zombie's response would land right
+// after term.clear() (text reappearing mid-screen), and its own
+// self-rescheduled setTimeout would run ALONGSIDE the freshly-started
+// loop, giving two loops racing to read() the same SSH channel at once.
+// Since read() is destructive, each loop only gets part of the stream —
+// which is exactly what caused output to go missing on the next clear,
+// and scroll position to look like it jumped during heavy continuous
+// output (e.g. a download), because writes were landing out of order
+// across the two competing loops.
+let pollGen = 0;
+
+// Keystrokes go out in order, one request at a time; whatever is typed while a request is
+// in flight is merged into the next one. (Separate parallel requests can overtake each other,
+// which scrambled fast typing, and every request has fixed overhead.)
+let sendBuf = '', sending = false;
+async function flushSend() {
+    if (sending || !sendBuf || !sessionId) return;
+    sending = true;
+    try {
+        while (sendBuf && sessionId) {
+            const chunk = sendBuf; sendBuf = '';
+            try {
+                await fetch(`/vm/${VM_ID}/terminal/send`, {
+                    method: 'POST', keepalive: chunk.length < 4000,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ session: sessionId, data: chunk })
+                });
+            } catch (e) {}
+        }
+    } finally { sending = false; }
+}
+
+// Resolves once we have a real, settled measurement of the terminal
+// container. Nothing is allowed to spawn a shell before this resolves —
+// that's what used to cause the "shell already spawned at the wrong
+// size" bug (fixed 500ms timeout firing before layout/fonts settled).
+let termReadyResolve;
+const termReady = new Promise(res => { termReadyResolve = res; });
+let lastSyncedCols = null, lastSyncedRows = null;
+
+// term.write() is asynchronous under the hood — xterm queues the data and
+// parses/renders it on its own schedule, it does NOT finish just because
+// the write() call returned. Calling scrollToBottom() (or worse, clear())
+// right after write() races that pending render: scrollToBottom can fire
+// before the new lines actually landed (looks like output "jumping" /
+// not sticking to the bottom during a busy stream like a download), and
+// clear() can fire while an older chunk is still queued, so that old
+// chunk lands AFTER the clear and reappears (looks like clear dropped you
+// in the middle of old text, or — once that stray chunk is empty — like
+// nothing renders at all). Routing every write through this chain
+// guarantees each write is actually flushed before anything after it
+// (a scroll, a clear, the next write) runs.
+let writeChain = Promise.resolve();
+function termWrite(data) {
+    writeChain = writeChain.then(() => new Promise(resolve => term.write(data, resolve)));
+    return writeChain;
+}
+
+
+// ---- latency badge, saved commands, colour themes, session log ----
+const THEMES = [
+    {n: 'Dark',   t: {background: '#0c0c0e', foreground: '#d4d4e0', cursor: '#ffffff', selectionBackground: 'rgba(230,230,234,0.35)'}},
+    {n: 'Black',  t: {background: '#000000', foreground: '#e6e6e6', cursor: '#ffffff', selectionBackground: 'rgba(255,255,255,0.3)'}},
+    {n: 'Green',  t: {background: '#04100a', foreground: '#7dffa8', cursor: '#b6ffcf', selectionBackground: 'rgba(125,255,168,0.25)'}},
+    {n: 'Light',  t: {background: '#f6f6f8', foreground: '#1b1b1f', cursor: '#111111', selectionBackground: 'rgba(0,0,0,0.2)'}},
+];
+let themeIdx = 0;
+try { themeIdx = Math.max(0, Math.min(THEMES.length - 1, parseInt(localStorage.getItem('term_theme') || '0', 10) || 0)); } catch (e) {}
+function applyTheme() { if (term) term.options.theme = Object.assign({}, THEMES[themeIdx].t); const w = document.getElementById('xterm-wrap'); if (w) w.style.background = THEMES[themeIdx].t.background; }
+function cycleTheme() { themeIdx = (themeIdx + 1) % THEMES.length; try { localStorage.setItem('term_theme', String(themeIdx)); } catch (e) {} applyTheme(); term.writeln('\r\n\x1b[90m[Colours: ' + THEMES[themeIdx].n + ']\x1b[0m'); }
+applyTheme();
+
+let logBuf = '';
+const _tw = termWrite;
+termWrite = function (data) { logBuf += data; if (logBuf.length > 400000) logBuf = logBuf.slice(-300000); return _tw(data); };
+function downloadLog() {
+    const txt = logBuf.replace(/\x1b\[[0-9;?]*[ -\/]*[@-~]/g, '').replace(/\x1b\][^\x07]*\x07/g, '').replace(/\r/g, '');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([txt], {type: 'text/plain'}));
+    a.download = 'terminal-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+}
+
+function loadSnips() { try { const l = JSON.parse(localStorage.getItem('term_snips') || 'null'); return Array.isArray(l) ? l.filter(x => typeof x === 'string').slice(0, 12) : []; } catch (e) { return []; } }
+function saveSnips(l) { try { localStorage.setItem('term_snips', JSON.stringify(l.slice(0, 12))); } catch (e) {} }
+function renderSnips() {
+    const box = document.getElementById('snipList'); box.innerHTML = '';
+    loadSnips().forEach((cmd, i) => {
+        const b = document.createElement('button'); b.className = 'qc-btn'; b.type = 'button'; b.title = cmd; b.textContent = cmd.length > 28 ? cmd.slice(0, 27) + '…' : cmd;
+        b.onclick = () => sendQuick(cmd + '\n');
+        const x = document.createElement('button'); x.className = 'qc-btn'; x.type = 'button'; x.textContent = '×'; x.title = 'Remove'; x.style.padding = '2px 7px';
+        x.onclick = () => { const l = loadSnips(); l.splice(i, 1); saveSnips(l); renderSnips(); };
+        box.appendChild(b); box.appendChild(x);
+    });
+}
+function addSnippet() {
+    const c = (prompt('Command to save (it runs when you click it):', '') || '').trim();
+    if (!c) return;
+    const l = loadSnips(); if (l.length >= 12) { alert('You can save up to 12 commands. Remove one first.'); return; }
+    l.push(c.slice(0, 200)); saveSnips(l); renderSnips();
+}
+renderSnips();
+
+let pingMs = null;
+async function pingOnce() {
+    const t0 = performance.now();
+    try { await fetch(`/vm/${VM_ID}/terminal/ping`, {cache: 'no-store'}); } catch (e) { return; }
+    const ms = performance.now() - t0;
+    pingMs = pingMs === null ? ms : pingMs * 0.6 + ms * 0.4;
+    const el = document.getElementById('pingBadge'); if (!el) return;
+    el.textContent = '⚡ ' + Math.round(pingMs) + ' ms';
+    el.style.color = pingMs < 60 ? '#7bd88f' : pingMs < 150 ? '#e5c07b' : '#e06c75';
+}
+setInterval(() => { if (!document.hidden && sessionId) pingOnce(); }, 3000);
+setTimeout(pingOnce, 1500);
+
+function buildTerm() {
+    term = new Terminal({
+        cursorBlink: true,
+        fontSize: fontSize,
+        fontFamily: 'JetBrains Mono, Fira Code, Consolas, monospace',
+        theme: Object.assign({}, THEMES[themeIdx].t),
+        scrollback: 8000,
+    });
+    fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.loadAddon(new WebLinksAddon.WebLinksAddon());
+    document.getElementById('xterm').innerHTML = '';
+    term.open(document.getElementById('xterm'));
+    term.onData(data => {
+        if (!sessionId) return;
+        sendBuf += data;
+        flushSend();
+    });
+
+    // Measure repeatedly until the container reports a plausible size
+    // (fonts loaded, flex layout settled, tab actually visible) instead
+    // of trusting a single early rAF pass. Bail out after ~2s regardless
+    // so we never hang forever if something genuinely stays hidden.
+    let attempts = 0;
+    function tryFit() {
+        attempts++;
+        fitAddon.fit();
+        const box = document.getElementById('xterm').getBoundingClientRect();
+        const settled = box.width > 50 && box.height > 50 && term.cols >= 20 && term.rows >= 5;
+        if (settled || attempts >= 40) {
+            syncSize(true);
+            term.scrollToBottom();
+            termReadyResolve();
+        } else {
+            requestAnimationFrame(tryFit);
+        }
+    }
+    requestAnimationFrame(() => requestAnimationFrame(tryFit));
+
+    // Catches container-size changes that don't fire a window 'resize'
+    // event at all — sidebar collapse, tab switch, fullscreen toggle,
+    // CSS flex reflow. This is the other half of the original bug: the
+    // PTY size and the browser size could silently drift apart mid-session.
+    if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => { fitAddon.fit(); syncSize(); term.scrollToBottom(); }).observe(document.getElementById('xterm'));
+    }
+}
+buildTerm();
+window.addEventListener('resize', () => { fitAddon.fit(); syncSize(); term.scrollToBottom(); });
+
+// True when the user is already viewing the bottom of the buffer.
+// Used so new output only auto-scrolls when it wouldn't yank the
+// user away from something they scrolled up to read.
+function isAtBottom() {
+    if (!term) return true;
+    const buf = term.buffer.active;
+    return buf.viewportY >= buf.baseY - 1;
+}
+
+function syncSize(force) {
+    if (!term) return;
+    // Skip redundant network calls when nothing actually changed, but
+    // always let a forced call (post-connect, post-fullscreen) through.
+    if (!force && term.cols === lastSyncedCols && term.rows === lastSyncedRows) return;
+    lastSyncedCols = term.cols;
+    lastSyncedRows = term.rows;
+    if (!sessionId) return;
+    fetch(`/vm/${VM_ID}/terminal/resize`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ session: sessionId, cols: term.cols, rows: term.rows })
+    }).catch(() => {});
+}
+
+function setStatus(text, state) {
+    document.getElementById('shellStatus').lastChild.textContent = text;
+    const led = document.getElementById('statusLed');
+    led.className = 'status-led' + (state ? ' ' + state : '');
+}
+
+function toggleCredBar() {
+    const bar = document.getElementById('credBar');
+    const btn = document.getElementById('btnToggleCreds');
+    const show = bar.style.display === 'none';
+    bar.style.display = show ? 'flex' : 'none';
+    if (show) document.getElementById('credUsername').focus();
+}
+
+function launchSshx() {
+    const btn = document.getElementById('btnSshx');
+    const box = document.getElementById('sshxLinkBox');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting…';
+    fetch(`/vm/${VM_ID}/sshx`)
+        .then(r => r.json())
+        .then(d => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-share-alt"></i> Share (sshx)';
+            if (d.success && d.url) {
+                box.style.display = 'inline-flex';
+                box.innerHTML = `<a href="${d.url}" target="_blank" rel="noopener" style="color:var(--accent-hover);">${d.url}</a>
+                    <button type="button" class="tb-icon-btn" style="width:24px;height:24px;font-size:10px;" onclick="phvmCopy('${d.url}', this)" title="Copy link"><i class="fas fa-copy"></i></button>`;
+            } else {
+                showSshxError(d.message || 'Failed to start sshx. Try again.');
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-share-alt"></i> Share (sshx)';
+            showSshxError('sshx request failed — check the connection and try again.');
+        });
+}
+
+// Long/technical sshx errors are shown here (copyable) instead of a native
+// alert(), whose text can't be reliably selected or copied on most browsers.
+function showSshxError(message) {
+    const box = document.getElementById('sshxLinkBox');
+    box.style.display = 'inline-flex';
+    box.style.maxWidth = '520px';
+    box.innerHTML = `<span style="color:var(--danger);font-size:11.5px;white-space:pre-wrap;word-break:break-word;">${message.replace(/</g, '&lt;')}</span>
+        <button type="button" class="tb-icon-btn" style="width:24px;height:24px;font-size:10px;" onclick="phvmCopy(${JSON.stringify(message)}, this)" title="Copy error"><i class="fas fa-copy"></i></button>`;
+}
+
+function sendQuick(cmd, confirmFirst) {
+    if (!sessionId) { term.writeln('\x1b[33m[Not connected]\x1b[0m'); return; }
+    if (confirmFirst && !confirm('This will send `' + cmd.trim() + '` to the VM. Continue?')) return;
+    fetch(`/vm/${VM_ID}/terminal/send`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ session: sessionId, data: cmd })
+    });
+    term.focus();
+}
+
+async function clearTerm() {
+    // Pause polling and wait for every write already queued (including
+    // one that might just have landed from the last poll) to actually
+    // finish rendering before we clear. Otherwise that queued chunk lands
+    // right after term.clear() and reappears on screen — that's the
+    // "clear jumps to the middle" / "second clear shows nothing" bug.
+    const wasPolling = pollTimer !== null;
+    if (wasPolling) { clearTimeout(pollTimer); pollTimer = null; }
+    // Invalidate any poll loop iteration that's already mid-fetch or
+    // mid-write right now — clearTimeout above only stopped the *next*
+    // scheduled poll, not one already in flight. Bumping pollGen here
+    // means that old iteration's post-await checks will see a mismatch
+    // and quietly stop instead of writing after our clear or spawning a
+    // second, competing poll loop.
+    pollGen++;
+    await writeChain;
+    term.clear();
+    // Re-confirm size with the server right when the user clears — if
+    // cols/rows had drifted (see ResizeObserver above), this is the
+    // moment the mismatch was most visible (blank/jumpy scroll), so
+    // resync defensively before the next prompt redraws.
+    fitAddon.fit();
+    syncSize(true);
+    if (wasPolling && sessionId) pollTimer = setTimeout(() => pollLoop(pollGen), 0);
+}
+
+function copySelection() {
+    const sel = term.getSelection();
+    if (sel) phvmCopy(sel, null);
+}
+
+function adjustFont(delta) {
+    fontSize = Math.min(22, Math.max(10, fontSize + delta));
+    term.options.fontSize = fontSize;
+    fitAddon.fit();
+    syncSize();
+}
+
+function toggleFullscreen() {
+    const page = document.getElementById('shellPage');
+    const btn = document.getElementById('btnFullscreen');
+    const isCurrentlyFull = !!document.fullscreenElement;
+
+    if (!isCurrentlyFull) {
+        const req = page.requestFullscreen || page.webkitRequestFullscreen || page.msRequestFullscreen;
+        if (req) {
+            req.call(page).catch(() => { page.classList.add('fullscreen'); onFullscreenChange(true); });
+        } else {
+            page.classList.add('fullscreen');
+            onFullscreenChange(true);
+        }
+    } else {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+        if (exit) exit.call(document);
+        else { page.classList.remove('fullscreen'); onFullscreenChange(false); }
+    }
+}
+
+function onFullscreenChange(forcedState) {
+    const page = document.getElementById('shellPage');
+    const btn = document.getElementById('btnFullscreen');
+    const isFull = forcedState !== undefined ? forcedState : !!document.fullscreenElement;
+    page.classList.toggle('fullscreen', isFull);
+    btn.classList.toggle('active', isFull);
+    btn.innerHTML = isFull ? '<i class="fas fa-compress"></i>' : '<i class="fas fa-expand"></i>';
+    setTimeout(() => { fitAddon.fit(); syncSize(); }, 60);
+}
+
+document.addEventListener('fullscreenchange', () => onFullscreenChange());
+document.addEventListener('webkitfullscreenchange', () => onFullscreenChange());
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('shellPage').classList.contains('fullscreen') && !document.fullscreenElement) {
+        // Only needed for the CSS-fallback fullscreen mode (no native Fullscreen API)
+        toggleFullscreen();
+    }
+});
+
+// Best-effort cleanup if the tab/window is closed without clicking
+// Disconnect — sendBeacon is the only reliable way to fire a request
+// during unload (a normal fetch can get cancelled mid-flight).
+window.addEventListener('pagehide', () => {
+    if (sessionId) {
+        try {
+            navigator.sendBeacon(
+                `/vm/${VM_ID}/terminal/disconnect`,
+                new Blob([JSON.stringify({ session: sessionId })], { type: 'application/json' })
+            );
+        } catch (e) {}
+    }
+});
+
+async function connectShell() {
+    setStatus('Connecting (waiting for SSH)…', 'connecting');
+    document.getElementById('btnConnect').disabled = true;
+    term.writeln('\r\n\x1b[90mConnecting…\x1b[0m');
+    try {
+        // Never spawn the remote shell before we've measured a real,
+        // settled terminal size — this is what previously let the shell
+        // start at a stale/default size (e.g. 80x24) whenever connect
+        // happened to race ahead of the layout/fit pass.
+        await termReady;
+        fitAddon.fit();
+
+        const credUser = (document.getElementById('credUsername').value || '').trim();
+        const credPass = document.getElementById('credPassword').value || '';
+        const body = { cols: term.cols, rows: term.rows };
+        if (credUser) body.username = credUser;
+        if (credPass) body.password = credPass;
+
+        const res = await fetch(`/vm/${VM_ID}/terminal/connect`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!data.success) {
+            term.writeln('\x1b[31m' + (data.message || 'Failed') + '\x1b[0m');
+            setStatus('Failed', 'error');
+            document.getElementById('btnConnect').disabled = false;
+            // Auth failed (or we already know this is an ISO installer with
+            // no creds yet) — surface the credentials box so the person can
+            // just retype the right password instead of hunting for it.
+            if (data.auth_failed) {
+                document.getElementById('credBar').style.display = 'flex';
+                document.getElementById('btnToggleCreds').style.display = 'none';
+                document.getElementById('credPassword').focus();
+            }
+            return;
+        }
+        sessionId = data.session;
+        reconnectAttempts = 0;
+        term.clear();
+        if (data.output) { await termWrite(data.output); term.scrollToBottom(); }
+        setStatus('Connected', 'connected');
+        document.getElementById('btnConnect').style.display = 'none';
+        document.getElementById('btnDisconnect').style.display = 'inline-flex';
+        pollGen++;
+        pollTimer = setTimeout(() => pollLoop(pollGen), 0);
+        term.focus();
+        // Re-fit and force a resize_pty call right after connect — belt
+        // and suspenders in case anything shifted between the fit above
+        // and the server actually spawning the shell (network latency).
+        fitAddon.fit();
+        syncSize(true);
+    } catch (e) {
+        term.writeln('\x1b[31m' + e + '\x1b[0m');
+        setStatus('Failed', 'error');
+        document.getElementById('btnConnect').disabled = false;
+    }
+}
+
+async function pollLoop(gen) {
+    // gen is the pollGen value that was current when this loop (or this
+    // particular iteration) was scheduled. If a clear/reconnect/disconnect
+    // has bumped pollGen since then, this iteration is a zombie left over
+    // from before that — it must not touch the terminal or reschedule
+    // itself, otherwise it fights the fresh loop for the same SSH channel.
+    if (gen !== pollGen || !sessionId) return;
+    try {
+        const res = await fetch(`/vm/${VM_ID}/terminal/read`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ session: sessionId, wait: 0.9 })
+        });
+        const data = await res.json();
+        if (gen !== pollGen) return; // went stale while the fetch was in flight
+        if (data.output) {
+            // Check bottom-ness BEFORE writing, then only actually scroll
+            // once the write is confirmed rendered (see termWrite above).
+            // Running the whole read -> write -> scroll cycle to completion
+            // before scheduling the next poll (instead of a plain
+            // setInterval that can overlap itself) is what keeps this
+            // accurate during a fast, continuous stream like a download —
+            // otherwise overlapping polls can each grab a stale "am I at
+            // the bottom" reading and the view stops following new output.
+            const stickToBottom = isAtBottom();
+            await termWrite(data.output);
+            if (gen !== pollGen) return; // went stale while the write was pending
+            if (stickToBottom) term.scrollToBottom();
+        }
+        if (data.closed) { disconnectShell(true); return; }
+    } catch (e) { await new Promise(r => setTimeout(r, 400)); }
+    if (gen === pollGen && sessionId) pollTimer = setTimeout(() => pollLoop(gen), 0);
+}
+
+function disconnectShell(fromServer) {
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+    pollGen++;
+    // Tell the server to actually close the SSH connection/channel instead
+    // of leaving it open until the idle reaper eventually catches it.
+    if (sessionId && !fromServer) {
+        fetch(`/vm/${VM_ID}/terminal/disconnect`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ session: sessionId })
+        }).catch(() => {});
+    }
+    sessionId = null;
+    setStatus(fromServer ? 'Session closed' : 'Disconnected', fromServer ? 'error' : '');
+    document.getElementById('btnConnect').style.display = 'inline-flex';
+    document.getElementById('btnConnect').disabled = false;
+    document.getElementById('btnDisconnect').style.display = 'none';
+    if (!fromServer) term.writeln('\r\n\x1b[90m[Disconnected]\x1b[0m');
+    else if (reconnectAttempts < 3) {
+        reconnectAttempts++;
+        term.writeln(`\r\n\x1b[33m[Session ended — reconnecting… (${reconnectAttempts}/3)]\x1b[0m`);
+        setTimeout(connectShell, 1500);
+    }
+}
+
+{% if is_running %}
+// connectShell() itself awaits termReady internally, so calling it
+// immediately is safe and actually faster than the old fixed 500ms
+// guess whenever layout settles quickly, while still being correct
+// whenever it settles slowly.
+connectShell();
+{% else %}
+term.writeln('\x1b[33mVM is not running. Start it first.\x1b[0m');
+{% endif %}
+</script>
+{% endblock %}

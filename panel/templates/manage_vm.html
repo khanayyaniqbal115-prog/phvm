@@ -1,0 +1,676 @@
+{% extends "base.html" %}
+{% block title %}{{ vm.name }} — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span>
+<a href="{{ url_for('admin_vms') if session.role == 'admin' else url_for('dashboard') }}">VMs</a>
+<span class="sep">›</span> <span class="current">{{ vm.name }}</span>
+{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h1><i class="fas fa-desktop"></i> {{ vm.name }}</h1>
+        <p>ID: {{ vm.vm_id }} · Created {{ vm.created_at|datetime }}</p>
+        {% if vm.provision_kind == 'minecraft' %}
+        <p><span class="type-chip"><i class="fas fa-cube"></i> Minecraft server</span>
+           <span class="text-muted" style="font-size:12px;">Installs on first boot into <code>/root/mcserver</code>. Progress: <code>tail -f /root/phvm-provision.log</code> (SSH in).</span></p>
+        {% elif vm.provision_kind == 'sandbox' %}
+        <p><span class="type-chip"><i class="fas fa-box-open"></i> Sandbox VM (Docker)</span>
+           <span class="text-muted" style="font-size:12px;">Docker and Compose install on first boot (a few minutes). Check: <code>cat /root/SANDBOX_READY</code> and <code>tail -f /root/phvm-provision.log</code>.</span></p>
+        {% elif vm.provision_kind == 'bot' %}
+        <p><span class="type-chip"><i class="fas fa-robot"></i> Bot hosting</span>
+           <span class="text-muted" style="font-size:12px;">Runtime ready in <code>/root/bot</code> — see <code>/root/bot/README.txt</code>. Progress: <code>tail -f /root/phvm-provision.log</code>.</span></p>
+        {% endif %}
+    </div>
+    <div class="btn-group">
+        {% if is_running %}
+        <button class="btn btn-secondary" onclick="vmAction('stop')"><i class="fas fa-stop"></i> Stop</button>
+        <button class="btn btn-secondary" onclick="vmAction('restart')"><i class="fas fa-redo"></i> Restart</button>
+        {% else %}
+        <button class="btn btn-success" onclick="vmAction('start')"><i class="fas fa-play"></i> Start</button>
+        {% endif %}
+        <a href="{{ url_for('terminal', vm_id=vm.vm_id) }}" class="btn btn-primary"><i class="fas fa-terminal"></i> Terminal</a>
+        <a href="{{ url_for('file_manager', vm_id=vm.vm_id) }}" class="btn btn-secondary"><i class="fas fa-folder-open"></i> Files</a>
+        <button class="btn btn-secondary" id="btnSshCopy" onclick="copySshCommand()"><i class="fas fa-network-wired"></i> IPv4 SSH</button>
+        <button class="btn btn-secondary" id="btnTmate" onclick="launchTmateTop()"><i class="fas fa-terminal"></i> Tmate SSH</button>
+        <button class="btn btn-secondary" id="btnSshx" onclick="launchSshxTop()"><i class="fas fa-share-alt"></i> SSHX</button>
+        <button class="btn btn-secondary" id="btnSecurityScan" onclick="runSecurityScan()"><i class="fas fa-shield-alt"></i> Security Scan</button>
+        {% if session.role == 'admin' %}
+        <a href="{{ url_for('edit_vm', vm_id=vm.vm_id) }}" class="btn btn-secondary"><i class="fas fa-pen"></i> Edit</a>
+        <button type="button" class="btn btn-secondary" onclick="if(confirm('Reinstall wipes the disk and redeploys the OS. Continue?')) location.href='{{ url_for('reinstall_vm_route', vm_id=vm.vm_id) }}'"><i class="fas fa-redo"></i> Reinstall</button>
+        <button type="button" class="btn btn-secondary" onclick="cloneVm()"><i class="fas fa-clone"></i> Clone</button>
+        {% endif %}
+    </div>
+</div>
+
+<div id="topActionResult" style="display:none;margin-top:-8px;margin-bottom:20px;"></div>
+{% if vm.provision_kind == 'sandbox' %}
+<div class="card" style="margin-bottom:20px;"><div class="card-body">
+  <div style="font-weight:700;margin-bottom:4px;"><i class="fas fa-box-open"></i> Docker quick start</div>
+  <div class="text-muted" style="font-size:13px;margin-bottom:12px;">Open the Terminal, then paste a line. Everything runs inside your own VM — safe to experiment, break and reinstall.</div>
+  <div id="sbxList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;"></div>
+</div></div>
+<script>
+(function () {
+  var R = [
+    ['Check Docker', 'docker run --rm hello-world'],
+    ['Web server (Nginx on port 8080)', 'docker run -d --name web -p 8080:80 nginx'],
+    ['Portainer (Docker web UI)', 'docker volume create portainer_data && docker run -d --name portainer --restart=always -p 9000:9000 -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce'],
+    ['PostgreSQL database', 'docker run -d --name pg --restart=always -e POSTGRES_PASSWORD=change-me -p 5432:5432 -v pgdata:/var/lib/postgresql/data postgres:16'],
+    ['Uptime Kuma (monitoring)', 'docker run -d --name kuma --restart=always -p 3001:3001 -v kuma:/app/data louislam/uptime-kuma:1'],
+    ['n8n (automation)', 'docker run -d --name n8n --restart=always -p 5678:5678 -v n8n:/home/node/.n8n docker.n8n.io/n8nio/n8n'],
+    ['See running containers', 'docker ps -a'],
+    ['Clean everything unused', 'docker system prune -af']
+  ];
+  var box = document.getElementById('sbxList');
+  R.forEach(function (r) {
+    var d = document.createElement('div'); d.style.cssText = 'border:1px solid var(--border);border-radius:12px;padding:10px 12px;';
+    var t = document.createElement('div'); t.style.cssText = 'font-weight:600;font-size:13px;margin-bottom:6px;'; t.textContent = r[0];
+    var c = document.createElement('code'); c.style.cssText = 'display:block;font-size:11.5px;white-space:pre-wrap;word-break:break-all;max-height:64px;overflow:hidden;opacity:.8;'; c.textContent = r[1];
+    var b = document.createElement('button'); b.className = 'btn btn-secondary btn-sm'; b.style.marginTop = '8px'; b.innerHTML = '<i class="fas fa-copy"></i> Copy';
+    b.onclick = function () { navigator.clipboard.writeText(r[1]); b.innerHTML = '<i class="fas fa-check"></i> Copied'; setTimeout(function () { b.innerHTML = '<i class="fas fa-copy"></i> Copy'; }, 1500); };
+    d.append(t, c, b); box.appendChild(d);
+  });
+})();
+</script>
+{% endif %}
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Status</div>
+        <div class="stat-value" style="font-size:20px;">
+            <span class="badge badge-{{ 'success' if is_running else 'secondary' }}" style="font-size:13px;">
+                {{ 'RUNNING' if is_running else 'STOPPED' }}
+            </span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Resources</div>
+        <div class="stat-value" style="font-size:18px;">{{ vm.cpu_cores }} vCPU · {{ vm.ram_mb }} MB</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Disk</div>
+        <div class="stat-value" style="font-size:18px;">{{ vm.storage_gb }} GB</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">OS</div>
+        <div class="stat-value" style="font-size:16px;">{{ vm.os_template }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Expiry</div>
+        <div class="stat-value" style="font-size:16px;">
+            {% if vm.expiry_date %}{{ vm.expiry_date[:10] }}{% else %}<span class="text-muted">No expiry</span>{% endif %}
+        </div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+    {% if vm.is_iso %}
+    <div class="card">
+        <div class="card-header"><h2>🖥️ VNC Console (Installer)</h2></div>
+        <div class="card-body padded">
+            <p class="text-muted" style="font-size:13px;margin-bottom:14px;">
+                This template boots an <strong>installer ISO</strong> ({{ vm.os_template }}) — there's no
+                cloud-init, so <strong>SSH won't work</strong> until you finish the install yourself over VNC.
+            </p>
+            <div class="form-group">
+                <label>VNC Address</label>
+                <div class="form-control" style="font-family:monospace;">{{ vm.ssh_host or server_ip }}:{{ vm.vnc_console_port }}</div>
+            </div>
+            <div class="form-group">
+                <label>Connect with</label>
+                <div class="form-control" style="font-size:13px;">Any VNC client — TigerVNC, RealVNC, Remmina, or macOS's built-in Screen Sharing (vnc://{{ vm.ssh_host or server_ip }}:{{ vm.vnc_console_port }})</div>
+            </div>
+            <p class="text-muted" style="font-size:12px;margin-top:10px;">
+                After you finish the installer and it reboots, the VM boots from its own disk —
+                you can then set up SSH inside Proxmox's web UI (port 8006) yourself if you want panel-less access,
+                or keep using this VNC console.
+            </p>
+        </div>
+    </div>
+    {% else %}
+    {% include '_subdomain_card.html' %}
+    <div class="card">
+        <div class="card-header"><h2>Connection</h2></div>
+        <div class="card-body padded">
+            <div class="form-group">
+                <label>SSH Host</label>
+                <div class="form-control" style="font-family:monospace;">{{ vm.ssh_host or server_ip }}</div>
+            </div>
+            <div class="form-group">
+                <label>SSH Port</label>
+                <div class="form-control" style="font-family:monospace;">{{ vm.ssh_port }}</div>
+            </div>
+            <div class="form-group">
+                <label>Root User</label>
+                <div class="form-control" style="font-family:monospace;">root</div>
+            </div>
+            <div class="form-group">
+                <label>OS Sudo User</label>
+                <div class="form-control" style="font-family:monospace;">{{ default_user }}</div>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <div class="form-control" style="font-family:monospace;">•••••••• <button type="button" class="btn btn-sm btn-secondary" onclick="phvmCopy('{{ vm.ssh_password }}', this)" style="margin-left:8px;">Copy</button></div>
+                <div class="form-hint">Password is hidden. Use Copy if you need it for SSH.</div>
+            </div>
+            <div class="form-group">
+                <label>SSH Command</label>
+                <div class="form-control" style="font-family:monospace;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                    <span id="sshCmdText">ssh root@{{ vm.ssh_host or server_ip }} -p {{ vm.ssh_port }}</span>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="phvmCopy(document.getElementById('sshCmdText').textContent, this)">Copy</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Shareable Terminal (sshx)</label>
+                <div class="form-hint">Use the <strong>SSHX</strong> button above — opens a live, shareable web-terminal (via <a href="https://sshx.io" target="_blank" rel="noopener">sshx.io</a>). First run can take up to ~60-90 seconds while it installs inside the VM.</div>
+            </div>
+            <div class="form-group">
+                <label>Network</label>
+                <div class="form-control">
+                    {% if vm.network_mode == 'public' and vm.public_ip %}
+                    Public — {{ vm.public_ip }}
+                    {% else %}
+                    Private (NAT + DHCP)
+                    {% if vm.private_ip %} · {{ vm.private_ip }}{% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            {% if vm.private_ip %}
+            <div class="form-group">
+                <label>Private IP (allocated)</label>
+                <div class="form-control" style="font-family:monospace;">{{ vm.private_ip }}</div>
+                <div class="form-hint">Guest also gets QEMU DHCP (usually 10.0.2.15). Access via host NAT ports.</div>
+            </div>
+            {% endif %}
+            <div class="form-group">
+                <label>Acceleration</label>
+                <div class="form-control">
+                    {% if vm.accel_mode == 'kvm' %}
+                    <span class="badge badge-success">KVM</span>
+                    {% elif vm.accel_mode == 'tcg' %}
+                    <span class="badge badge-warning">TCG</span>
+                    {% else %}Auto{% endif %}
+                </div>
+            </div>
+            {% if node %}
+            <div class="form-group">
+                <label>Node</label>
+                <div class="form-control">{{ node.name }}{% if node.is_local %} (Local){% endif %}</div>
+            </div>
+            {% endif %}
+            <div class="form-group">
+                <label>Quick SSH</label>
+                <div class="form-control" style="font-family:monospace;font-size:12px;">
+                    {% if vm.public_ip %}
+                    ssh root@{{ vm.public_ip }}
+                    {% else %}
+                    ssh -p {{ vm.ssh_port }} root@{{ vm.ssh_host or server_ip }}
+                    {% endif %}
+                </div>
+                {% if vm.public_ip %}
+                <div class="form-hint">Public IP — no host NAT port forward for SSH</div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label>Serial console (QEMU)</label>
+                <div class="form-control" style="font-family:monospace;">telnet 127.0.0.1 {{ vm.serial_port or vm.vnc_port }}</div>
+                <div class="form-hint">Low-level QEMU serial — use Web Terminal for full shell once SSH is up.</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header"><h2>Live Metrics</h2></div>
+        <div class="card-body padded" id="metrics">
+            {% if is_running and metrics %}
+            <div class="form-group">
+                <label>CPU</label>
+                <div class="stat-value" style="font-size:22px;">{{ metrics.cpu }}%</div>
+            </div>
+            <div class="form-group">
+                <label>RAM (host process)</label>
+                <div class="stat-value" style="font-size:22px;">{{ metrics.ram_mb }} MB</div>
+            </div>
+            <div class="form-group">
+                <label>Threads</label>
+                <div class="stat-value" style="font-size:22px;">{{ metrics.threads }}</div>
+            </div>
+            <div class="form-group">
+                <label>Uptime</label>
+                <div class="stat-value" style="font-size:16px;">{{ metrics.uptime }}</div>
+            </div>
+            {% else %}
+            <p class="text-muted">VM is not running.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+
+<div class="card mt-2">
+    <div class="card-header">
+        <h2>NAT Port Forwards</h2>
+        <span id="portCount" class="text-muted" style="font-size:13px;">{{ port_forwards|length }}/{{ max_nat_ports }} used</span>
+    </div>
+    <div class="card-body" style="padding:20px 24px;overflow-x:auto;">
+        <p class="text-secondary" style="font-size:13px;margin-bottom:12px;">
+            {% if vm.public_ip %}
+            Public IP mode — SSH is <strong>{{ vm.public_ip }}:22</strong> (no host NAT for SSH).
+            {% else %}
+            SSH NAT: host <strong>:{{ vm.ssh_port }}</strong> → guest <strong>:22</strong>
+            {% endif %}
+        </p>
+        <table class="data-table" id="portTable">
+            <thead><tr><th>Host Port</th><th>Guest Port</th><th>Protocol</th><th>Label</th><th></th></tr></thead>
+            <tbody id="portTableBody">
+            {% for f in port_forwards %}
+            <tr data-id="{{ f.id }}">
+                <td style="font-family:monospace;">{{ f.host_port }}</td>
+                <td style="font-family:monospace;">{{ f.guest_port }}</td>
+                <td>{{ f.protocol }}</td>
+                <td class="text-muted">{{ f.label or '' }}</td>
+                <td><button type="button" class="btn btn-sm btn-danger" onclick="removePort({{ f.id }})"><i class="fas fa-trash"></i></button></td>
+            </tr>
+            {% else %}
+            <tr id="noPortsRow"><td colspan="5" class="text-muted" style="font-size:13px;">No extra forwards yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div style="display:flex;gap:8px;align-items:end;margin-top:16px;" id="addPortForm">
+            <div class="form-group" style="margin:0;flex:1;">
+                <label style="font-size:12px;">Guest Port to Forward</label>
+                <input type="number" id="newGuestPort" class="form-control" placeholder="e.g. 8080" min="1" max="65535">
+            </div>
+            <button type="button" class="btn btn-primary" onclick="addPort()" id="addPortBtn" {% if port_forwards|length >= max_nat_ports %}disabled{% endif %}>
+                <i class="fas fa-plus"></i> Add Port
+            </button>
+        </div>
+        <p id="portMsg" class="form-hint mt-1"></p>
+        <p class="form-hint mt-1">You can forward up to <strong>{{ max_nat_ports }}</strong> ports per VM. Restart the VM after changing forwards for them to apply.</p>
+    </div>
+</div>
+
+<script>
+const MAX_PORTS = {{ max_nat_ports }};
+function updatePortCount() {
+    const n = document.querySelectorAll('#portTableBody tr[data-id]').length;
+    document.getElementById('portCount').textContent = `${n}/${MAX_PORTS} used`;
+    document.getElementById('addPortBtn').disabled = n >= MAX_PORTS;
+}
+async function addPort() {
+    const gp = parseInt(document.getElementById('newGuestPort').value, 10);
+    const msgEl = document.getElementById('portMsg');
+    if (!gp || gp === 22) { msgEl.textContent = 'Enter a valid guest port (not 22).'; return; }
+    msgEl.textContent = 'Adding...';
+    try {
+        const r = await fetch(`{{ url_for('vm_ports', vm_id=vm.vm_id) }}`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'add', guest_port: gp})
+        });
+        const data = await r.json();
+        msgEl.textContent = data.message || '';
+        if (data.success) {
+            document.getElementById('noPortsRow')?.remove();
+            const tr = document.createElement('tr');
+            tr.dataset.id = data.id || '';
+            tr.innerHTML = `<td style="font-family:monospace;">${data.host_port}</td><td style="font-family:monospace;">${gp}</td><td>tcp</td><td class="text-muted"></td><td><button type="button" class="btn btn-sm btn-danger" onclick="removePort(${data.id})"><i class="fas fa-trash"></i></button></td>`;
+            document.getElementById('portTableBody').appendChild(tr);
+            document.getElementById('newGuestPort').value = '';
+            updatePortCount();
+        }
+    } catch (e) { msgEl.textContent = 'Request failed.'; }
+}
+async function removePort(id) {
+    if (!confirm('Remove this port forward?')) return;
+    try {
+        const r = await fetch(`{{ url_for('vm_ports', vm_id=vm.vm_id) }}`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'delete', id: id})
+        });
+        const data = await r.json();
+        if (data.success) {
+            document.querySelector(`#portTableBody tr[data-id="${id}"]`)?.remove();
+            if (!document.querySelectorAll('#portTableBody tr[data-id]').length) {
+                document.getElementById('portTableBody').innerHTML = '<tr id="noPortsRow"><td colspan="5" class="text-muted" style="font-size:13px;">No extra forwards yet.</td></tr>';
+            }
+            updatePortCount();
+        }
+    } catch (e) {}
+}
+</script>
+
+{% if vm.notes %}
+<div class="card mt-2">
+    <div class="card-header"><h2>Notes</h2></div>
+    <div class="card-body" style="padding:20px 24px;">{{ vm.notes }}</div>
+</div>
+{% endif %}
+
+<div class="card mt-2">
+    <div class="card-header"><h2><i class="fas fa-chart-line"></i> Usage History</h2></div>
+    <div class="card-body" style="padding:20px 24px;">
+        {% if usage_history %}
+        <canvas id="usageChart" height="80"></canvas>
+        {% else %}
+        <p class="text-muted" style="font-size:13px;">No usage samples yet — data is captured each time this page loads while the VM is running.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;" class="mt-2">
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-camera"></i> Snapshots</h2>
+        </div>
+        <div class="card-body" style="padding:20px 24px;">
+            <form method="POST" action="{{ url_for('snapshot_create', vm_id=vm.vm_id) }}" style="display:flex;gap:8px;margin-bottom:14px;">
+<input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <input type="text" name="name" class="form-control" placeholder="Snapshot name (optional)">
+                <button type="submit" class="btn btn-primary btn-sm" style="white-space:nowrap;"><i class="fas fa-plus"></i> Create</button>
+            </form>
+            {% if snapshots %}
+            <table class="data-table">
+                <thead><tr><th>Name</th><th>Size</th><th>Created</th><th></th></tr></thead>
+                <tbody>
+                {% for s in snapshots %}
+                <tr>
+                    <td style="font-weight:600;">{{ s.name }}</td>
+                    <td>{{ s.size_mb }} MB</td>
+                    <td class="text-muted" style="font-size:12px;">{{ s.created_at|datetime }}</td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="{{ url_for('snapshot_restore', vm_id=vm.vm_id, sid=s.id) }}" class="btn btn-sm btn-secondary"
+                               onclick="return confirm('Restore this snapshot? VM must be stopped.')" title="Restore"><i class="fas fa-undo"></i></a>
+                            <a href="{{ url_for('snapshot_delete', vm_id=vm.vm_id, sid=s.id) }}" class="btn btn-sm btn-danger"
+                               onclick="return confirm('Delete this snapshot?')" title="Delete"><i class="fas fa-trash"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted" style="font-size:13px;">No snapshots yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fas fa-hdd"></i> Backups</h2>
+        </div>
+        <div class="card-body" style="padding:20px 24px;">
+            <a href="{{ url_for('backup_create', vm_id=vm.vm_id) }}" class="btn btn-primary btn-sm" style="margin-bottom:14px;"><i class="fas fa-download"></i> Create Backup</a>
+            <form method="POST" action="{{ url_for('backup_schedule', vm_id=vm.vm_id) }}" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px;font-size:13px;">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <i class="fas fa-clock"></i> Auto
+                <select name="kind" class="form-control" style="width:auto;"><option value="backup" {{ 'selected' if not bk_sched or bk_sched.kind=='backup' }}>backup</option><option value="snapshot" {{ 'selected' if bk_sched and bk_sched.kind=='snapshot' }}>snapshot</option></select>
+                <select name="freq_hours" class="form-control" style="width:auto;">{% for h,l in [(0,'Off'),(6,'every 6 h'),(12,'every 12 h'),(24,'daily'),(72,'every 3 days'),(168,'weekly')] %}<option value="{{ h }}" {{ 'selected' if (bk_sched.freq_hours if bk_sched else 0)==h }}>{{ l }}</option>{% endfor %}</select>
+                keep <input type="number" name="keep" min="1" max="14" value="{{ bk_sched.keep if bk_sched else 3 }}" class="form-control" style="width:70px;">
+                <button class="btn btn-secondary btn-sm" type="submit">Save</button>
+                {% if bk_sched and bk_sched.freq_hours %}<span class="text-muted" style="font-size:12px;">last: {{ bk_sched.last_msg or 'waiting' }}</span>{% endif %}
+            </form>
+            {% if backups %}
+            <table class="data-table">
+                <thead><tr><th>File</th><th>Size</th><th>Created</th><th></th></tr></thead>
+                <tbody>
+                {% for b in backups %}
+                <tr>
+                    <td style="font-family:monospace;font-size:12px;">{{ b.filename }}</td>
+                    <td>{{ b.size_mb }} MB</td>
+                    <td class="text-muted" style="font-size:12px;">{{ b.created_at|datetime }}</td>
+                    <td>
+                        <div class="btn-group">
+                            <a href="{{ url_for('backup_restore', vm_id=vm.vm_id, bid=b.id) }}" class="btn btn-sm btn-secondary" onclick="return confirm('Restore this backup? VM must be stopped. Current disk is kept once as disk.qcow2.before-restore.')" title="Restore"><i class="fas fa-undo"></i></a>
+                            <a href="{{ url_for('backup_download', vm_id=vm.vm_id, bid=b.id) }}" class="btn btn-sm btn-secondary" title="Download"><i class="fas fa-download"></i></a>
+                            <a href="{{ url_for('backup_delete', vm_id=vm.vm_id, bid=b.id) }}" class="btn btn-sm btn-danger"
+                               onclick="return confirm('Delete this backup file?')" title="Delete"><i class="fas fa-trash"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted" style="font-size:13px;">No backups yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if usage_history %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('usageChart').getContext('2d'), {
+    type: 'line',
+    data: {
+        labels: {{ usage_history|map(attribute='timestamp')|list|tojson }},
+        datasets: [
+            { label: 'CPU %', data: {{ usage_history|map(attribute='cpu_percent')|list|tojson }}, borderColor: '#e6e6ea', tension: 0.3, pointRadius: 0 },
+            { label: 'RAM MB', data: {{ usage_history|map(attribute='ram_mb')|list|tojson }}, borderColor: '#6f96b8', tension: 0.3, pointRadius: 0, yAxisID: 'y1' }
+        ]
+    },
+    options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+            x: { display: false },
+            y: { title: { display: true, text: 'CPU %' } },
+            y1: { position: 'right', title: { display: true, text: 'RAM MB' }, grid: { drawOnChartArea: false } }
+        }
+    }
+});
+</script>
+{% endif %}
+<script>
+async function vmAction(action) {
+    if (action === 'delete' && !confirm('Delete permanently?')) return;
+    try {
+        const res = await fetch(`/vm/{{ vm.vm_id }}/${action}`);
+        const data = await res.json();
+        if (data.success) {
+            if (action === 'delete') location.href = '{{ url_for("admin_vms") if session.role == "admin" else url_for("dashboard") }}';
+            else location.reload();
+        } else alert(data.message || 'Failed');
+    } catch (e) {
+        alert('Request failed: ' + e);
+    }
+}
+function cloneVm() {
+    const name = prompt('Name for the cloned VM:', '{{ vm.name }}-clone');
+    if (name === null) return;
+    const f = document.createElement('form');
+    f.method = 'POST';
+    f.action = '{{ url_for("clone_vm", vm_id=vm.vm_id) }}';
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = 'name'; inp.value = name;
+    f.appendChild(inp);
+    document.body.appendChild(f);
+    f.submit();
+}
+{% if is_running %}
+setInterval(async () => {
+    try {
+        const res = await fetch(`/vm/{{ vm.vm_id }}/metrics`);
+        const data = await res.json();
+        if (data.running && data.metrics) {
+            document.getElementById('metrics').innerHTML = `
+                <div class="form-group"><label>CPU</label><div class="stat-value" style="font-size:22px;">${data.metrics.cpu}%</div></div>
+                <div class="form-group"><label>RAM (host process)</label><div class="stat-value" style="font-size:22px;">${data.metrics.ram_mb} MB</div></div>
+                <div class="form-group"><label>Threads</label><div class="stat-value" style="font-size:22px;">${data.metrics.threads}</div></div>
+                <div class="form-group"><label>Uptime</label><div class="stat-value" style="font-size:16px;">${data.metrics.uptime}</div></div>
+            `;
+        }
+    } catch(e) {}
+}, 8000);
+{% endif %}
+
+async function runSecurityScan() {
+    const btn = document.getElementById('btnSecurityScan');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning…';
+    try {
+        const res = await fetch(`/vm/{{ vm.vm_id }}/security-scan`, { method: 'POST' });
+        const data = await res.json();
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        if (!data.ok) {
+            alert('Scan failed: ' + (data.error || 'unknown error'));
+            return;
+        }
+        let msg = data.summary;
+        if (data.matched_processes && data.matched_processes.length) {
+            msg += '\n\nMatched processes: ' + data.matched_processes.join(', ');
+        }
+        if (data.suspicious_files && data.suspicious_files.length) {
+            msg += '\n\nFiles found:\n' + data.suspicious_files.join('\n');
+        }
+        alert('Security Scan — {{ vm.name }}\n\n' + msg);
+    } catch (e) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        alert('Scan request failed: ' + e);
+    }
+}
+
+function copySshCommand() {
+    const cmd = "ssh {{ vm.ssh_user or 'root' }}@{{ vm.ssh_host or vm.public_ip or server_ip }} -p {{ vm.ssh_port }}";
+    phvmCopy(cmd, document.getElementById('btnSshCopy'));
+}
+
+// Shared renderer: shows a labeled value in a box under the top button
+// row with its own Copy button underneath, used by both Tmate and SSHX.
+function showTopResultBox(label, value, hint, secondaryLabel, secondaryValue) {
+    const wrap = document.getElementById('topActionResult');
+    const boxId = 'topResultVal_' + Math.random().toString(36).slice(2, 8);
+    let html = `<div class="card" style="padding:16px 20px;">
+        <div class="form-group" style="margin-bottom:${secondaryValue ? '14px' : '0'};">
+            <label>${label}</label>
+            <div class="form-control" style="font-family:monospace;word-break:break-all;">${value}</div>
+            <div style="margin-top:8px;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="phvmCopy(${JSON.stringify(value)}, this)"><i class="fas fa-copy"></i> Copy</button>
+            </div>
+        </div>`;
+    if (secondaryValue) {
+        html += `<div class="form-group" style="margin-bottom:0;">
+            <label>${secondaryLabel}</label>
+            <div class="form-control" style="font-family:monospace;word-break:break-all;"><a href="${secondaryValue}" target="_blank" rel="noopener" style="color:var(--accent-hover);">${secondaryValue}</a></div>
+            <div style="margin-top:8px;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="phvmCopy(${JSON.stringify(secondaryValue)}, this)"><i class="fas fa-copy"></i> Copy</button>
+            </div>
+        </div>`;
+    }
+    if (hint) html += `<div class="form-hint" style="margin-top:12px;">${hint}</div>`;
+    html += `</div>`;
+    wrap.innerHTML = html;
+    wrap.style.display = 'block';
+}
+
+// Shared error renderer: shows a long/technical error message in a
+// selectable, copyable box instead of a native alert() — alert() text
+// is awkward or impossible to select/copy on most browsers (especially
+// mobile), which made long sshx/tmate error logs unusable.
+function showTopError(message) {
+    const wrap = document.getElementById('topActionResult');
+    wrap.innerHTML = `<div class="card" style="padding:16px 20px;border-color:var(--danger);">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+            <i class="fas fa-triangle-exclamation" style="color:var(--danger);margin-top:2px;"></i>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;margin-bottom:6px;">Could not start session</div>
+                <div class="form-control mono" style="white-space:pre-wrap;word-break:break-word;font-size:12px;max-height:220px;overflow-y:auto;user-select:text;">${message.replace(/</g, '&lt;')}</div>
+                <button type="button" class="btn btn-sm btn-secondary" style="margin-top:8px;" onclick="phvmCopy(${JSON.stringify(message)}, this)"><i class="fas fa-copy"></i> Copy error</button>
+            </div>
+        </div>
+    </div>`;
+    wrap.style.display = 'block';
+}
+
+// Shared fetch-with-timeout: aborts and shows a clear message instead of
+// letting the button spin forever if the VM is slow/unreachable.
+async function fetchWithTimeout(url, ms) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        return await res.json();
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function launchTmateTop() {
+    const btn = document.getElementById('btnTmate');
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting…';
+    const slowNotice = setTimeout(() => {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Still working… (first run can take ~1-2 min)';
+    }, 15000);
+    try {
+        const data = await fetchWithTimeout(`/vm/{{ vm.vm_id }}/tmate`, 240000);
+        clearTimeout(slowNotice);
+        btn.disabled = false;
+        btn.innerHTML = original;
+        if (data.success && data.tmate_ssh) {
+            showTopResultBox(
+                'Tmate SSH',
+                data.tmate_ssh,
+                'Share this command to give someone a live terminal session (via <a href="https://tmate.io" target="_blank" rel="noopener">tmate</a>) without your password. Takes ~10-20 seconds the first time.',
+                data.tmate_web ? 'Tmate Web' : null,
+                data.tmate_web || null
+            );
+        } else {
+            showTopError(data.message || 'Could not start tmate. Try again.');
+        }
+    } catch (e) {
+        clearTimeout(slowNotice);
+        btn.disabled = false;
+        btn.innerHTML = original;
+        if (e.name === 'AbortError') {
+            showTopError('Tmate setup timed out after 4 minutes. The VM may be unreachable or has no internet access to install tmate. Try again, or check the VM is fully booted.');
+        } else {
+            showTopError('tmate request failed: ' + e);
+        }
+    }
+}
+
+async function launchSshxTop() {
+    const btn = document.getElementById('btnSshx');
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting…';
+    const slowNotice = setTimeout(() => {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Still working… (first run can take ~1-2 min)';
+    }, 15000);
+    try {
+        const data = await fetchWithTimeout(`/vm/{{ vm.vm_id }}/sshx`, 180000);
+        clearTimeout(slowNotice);
+        btn.disabled = false;
+        btn.innerHTML = original;
+        if (data.success && data.url) {
+            showTopResultBox(
+                'Shareable Terminal (SSHX)',
+                data.url,
+                'Opens a live, shareable web-terminal (via <a href="https://sshx.io" target="_blank" rel="noopener">sshx.io</a>) — send the link to someone to give them terminal access without your password.'
+            );
+        } else {
+            showTopError(data.message || 'Could not start sshx. Try again.');
+        }
+    } catch (e) {
+        clearTimeout(slowNotice);
+        btn.disabled = false;
+        btn.innerHTML = original;
+        if (e.name === 'AbortError') {
+            showTopError('sshx setup timed out after 3 minutes. The VM may be unreachable or has no internet access to install sshx. Try again, or check the VM is fully booted.');
+        } else {
+            showTopError('sshx request failed: ' + e);
+        }
+    }
+}
+</script>
+{% endblock %}

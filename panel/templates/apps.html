@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}All apps — {{ site_name }}{% endblock %}
+{% block breadcrumb %}<span>PHvm</span> <span class="sep">›</span> <span class="current">All apps</span>{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-table-cells-large"></i> All apps</h1>
+  <p class="muted-note" style="margin:6px 0 0;">Everything you can host, and everything you already run.</p></div>
+<input class="form-control" id="q" placeholder="Search apps… (code, game, storage, monitor)" style="max-width:420px;margin-bottom:16px;" oninput="flt()">
+{% if mine %}<div class="st-lbl" style="margin:6px 0 10px;opacity:.7;">Your apps</div>
+<div class="ap-grid">{% for m in mine %}<a class="card ap" href="{{ url_for('web_panel', vm_id=m.vm_id) }}" data-s="{{ (m.name ~ ' ' ~ m.app)|lower }}"><i class="fas {{ m.icon }}"></i><div><b>{{ m.name }}</b><span>{{ m.app }}{% if m.expiry %} · until {{ m.expiry }}{% endif %}</span></div></a>{% endfor %}</div>{% endif %}
+<div class="st-lbl" style="margin:22px 0 10px;opacity:.7;">Get a new one</div>
+<div class="ap-grid">
+{% for k, a in catalog.items() %}<a class="card ap" href="{{ url_for('web_plans_page') }}" data-s="{{ (a.name ~ ' ' ~ a.tag ~ ' ' ~ ('game' if a.game else 'app'))|lower }}"><i class="fas {{ a.icon }}"></i><div><b>{{ a.name }}</b><span>{{ a.tag[:90] }}</span></div></a>{% endfor %}
+<a class="card ap" href="{{ url_for('web_plans_page') }}" data-s="wordpress website blog"><i class="fab fa-wordpress"></i><div><b>WordPress</b><span>A website with one-click login.</span></div></a>
+<a class="card ap" href="{{ url_for('shop_index') }}" data-s="minecraft bot vps server game"><i class="fas fa-cube"></i><div><b>Minecraft, Bots &amp; VPS</b><span>Open the shop for these.</span></div></a>
+</div>
+<style>.ap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}.ap{display:flex;gap:14px;align-items:center;padding:16px;text-decoration:none;color:inherit}.ap>i{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#f4f4f7,#b9b9c2);color:#0b0b0d;flex:none}.ap b{display:block}.ap span{font-size:12px;opacity:.65}</style>
+{% endblock %}
+{% block extra_js %}<script>function flt(){const q=document.getElementById('q').value.toLowerCase();document.querySelectorAll('.ap').forEach(a=>a.style.display=a.dataset.s.includes(q)?'':'none')}</script>{% endblock %}

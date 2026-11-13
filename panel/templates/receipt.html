@@ -1,0 +1,9 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Receipt #{{ r.id }}</title>
+<style>body{font-family:Inter,system-ui,sans-serif;color:#111;background:#fff;margin:0;padding:32px}.box{max-width:640px;margin:0 auto;border:1px solid #ddd;border-radius:12px;padding:32px}
+h1{margin:0 0 4px;font-size:22px}.m{color:#666;font-size:13px}table{width:100%;border-collapse:collapse;margin:24px 0}td,th{padding:10px 0;border-bottom:1px solid #eee;text-align:left}th:last-child,td:last-child{text-align:right}
+.tot{font-size:20px;font-weight:700}.no{margin-top:20px}@media print{.no{display:none}body{padding:0}.box{border:0}}</style></head><body><div class="box">
+<h1>{{ company }}</h1><div class="m">Receipt #{{ r.id }} · {{ r.created_at }}</div>
+<div class="m" style="margin-top:14px;">Billed to: {{ u.username if u else '—' }}{% if u and u.email %} ({{ u.email }}){% endif %}</div>
+<table><thead><tr><th>Description</th><th>Amount</th></tr></thead><tbody><tr><td>{{ r.description }}</td><td>{{ '%.2f'|format(r.amount) }} {{ r.currency }}</td></tr></tbody></table>
+<div class="tot">Total paid: {{ '%.2f'|format(r.amount) }} {{ r.currency }}</div><div class="m" style="margin-top:8px;">Reference: {{ r.ref or '—' }}</div>
+<div class="no"><button onclick="window.print()">Print / Save as PDF</button> <a href="{{ url_for('receipts_page') }}">Back</a></div></div></body></html>

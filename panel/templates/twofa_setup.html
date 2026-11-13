@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Set up 2FA — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span>
+<a href="{{ url_for('profile') }}">Profile</a>
+<span class="sep">›</span> <span class="current">Two-Factor Auth</span>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-shield-halved"></i> Set up Two-Factor Authentication</h1>
+</div>
+<div class="card" style="max-width:520px;">
+    <div class="card-body form-pad">
+        <p class="text-secondary" style="font-size:13px;">
+            1. Install an authenticator app (Google Authenticator, Authy, etc).<br>
+            2. Add a new account manually using the secret key below (no QR scanner needed).<br>
+            3. Enter the 6-digit code it generates to confirm.
+        </p>
+        <div class="form-group">
+            <label>Secret Key</label>
+            <div class="form-control" style="font-family:monospace;letter-spacing:1px;user-select:all;">{{ secret }}</div>
+        </div>
+        <div class="form-group">
+            <label>Manual Entry URI</label>
+            <div class="form-control" style="font-size:11px;word-break:break-all;user-select:all;">{{ uri }}</div>
+        </div>
+        <form method="POST" action="{{ url_for('twofa_enable') }}">
+<input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label>Enter 6-digit code to confirm</label>
+                <input type="text" name="code" class="form-control" maxlength="6" pattern="[0-9]{6}" placeholder="000000" required autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fas fa-check"></i> Enable 2FA</button>
+            <a href="{{ url_for('profile') }}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}My Activity — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span> <span class="current">Activity</span>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-history"></i> My Activity</h1>
+</div>
+<div class="card">
+    <div class="card-body" style="overflow-x:auto;">
+        <table class="data-table">
+            <thead><tr><th>Time</th><th>Action</th><th>Details</th></tr></thead>
+            <tbody>
+                {% for l in logs %}
+                <tr>
+                    <td class="text-muted" style="font-size:12px;">{{ l.timestamp|datetime }}</td>
+                    <td style="font-weight:600;">{{ l.action|replace('_', ' ')|capitalize }}</td>
+                    <td class="text-secondary">{{ l.details or '' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" style="text-align:center;padding:32px;color:var(--text-muted);">No activity recorded yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Templates — {{ site_name }}{% endblock %}
+{% block breadcrumb %}<span>PHvm</span> <span class="sep">›</span> <span class="current">Templates</span>{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-puzzle-piece"></i> Template marketplace</h1>
+<p class="muted-note" style="margin:6px 0 0;">Ready-made setups (plugins, configs, project files) made by other users. Install one on your own server in a click. Your balance: ⚡{{ '%.2f'|format(balance) }} · sellers keep {{ (100 - fee)|round|int }}%.</p></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px;margin-bottom:26px;">
+{% for it in items %}<div class="card" style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+  <div><span class="type-chip">{{ it.kind }}</span></div><b style="font-size:16px;">{{ it.name }}</b>
+  <div class="muted-note" style="margin:0;">{{ it.desc }}</div>
+  <div style="font-size:12px;opacity:.7;">by {{ it.author }} · {{ it.size_kb }} KB · {{ it.installs }} installs</div>
+  <div style="font-family:var(--font-mono);font-size:20px;">{% if it.price > 0 %}⚡{{ '%.2f'|format(it.price) }}{% else %}Free{% endif %}</div>
+  {% if it.targets %}<select class="form-control" id="t{{ it.id }}">{% for s in it.targets %}<option value="{{ s.vm_id }}">{{ s.name }}</option>{% endfor %}</select>
+  <button class="btn btn-primary" onclick="inst({{ it.id }})"><i class="fas fa-download"></i> Install on my server</button>
+  {% else %}<div class="muted-note" style="margin:0;">You have no {{ it.kind }} server to install this on.</div>{% endif %}
+</div>{% else %}<div class="muted-note">No templates yet. Make one from your own server (open a Minecraft or code server → "Share as a template").</div>{% endfor %}</div>
+{% if own %}<div class="card"><div class="card-header"><h2 style="margin:0;">My templates</h2></div><div class="card-body">
+{% for o in own %}<div style="display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);"><span><b>{{ o.name }}</b> · {{ kinds.get(o.kind, o.kind) }} · ⚡{{ '%.2f'|format(o.price or 0) }} · {{ o.installs }} installs</span><span><span class="badge">{{ o.status }}</span> <button class="btn btn-secondary btn-sm" onclick="del({{ o.id }})">Delete</button></span></div>{% endfor %}</div></div>{% endif %}
+{% endblock %}
+{% block extra_js %}<script>
+const H = {'Content-Type': 'application/json', 'X-CSRF-Token': {{ csrf_token|tojson }}};
+async function inst(id) { if (!confirm('Install this template? Files in your server will be replaced where names match. Make a snapshot first if unsure.')) return; const r = await (await fetch('/templates/' + id + '/install', {method: 'POST', headers: H, body: JSON.stringify({vm_id: document.getElementById('t' + id).value})})).json(); alert(r.message); }
+async function del(id) { if (!confirm('Delete this template?')) return; const r = await (await fetch('/templates/' + id + '/delete', {method: 'POST', headers: H, body: '{}'})).json(); alert(r.message); location.reload(); }
+</script>{% endblock %}

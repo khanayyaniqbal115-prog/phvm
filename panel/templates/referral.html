@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Referrals — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span> <span class="current">Referrals</span>
+{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-user-plus"></i> Invite friends</h1>
+<p>{% if bonus > 0 %}When a friend you invite makes their first purchase, you get <b>⚡{{ '%g'|format(bonus) }}</b>.{% else %}Share your link with friends.{% endif %}</p></div>
+<div class="card" style="max-width:640px;margin-bottom:18px;"><div class="card-body">
+    <label>Your link</label>
+    <div style="display:flex;gap:8px;"><input class="form-control" id="refLink" value="{{ link }}" readonly><button class="btn btn-primary" onclick="navigator.clipboard.writeText(document.getElementById('refLink').value);this.textContent='Copied'">Copy</button></div>
+</div></div>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(140px,220px));gap:14px;">
+    <div class="card"><div class="card-body"><div class="text-muted" style="font-size:12px;">Friends joined</div><div style="font-size:24px;font-weight:700;">{{ joined }}</div></div></div>
+    <div class="card"><div class="card-body"><div class="text-muted" style="font-size:12px;">Made a purchase</div><div style="font-size:24px;font-weight:700;">{{ paid }}</div></div></div>
+</div>
+{% endblock %}

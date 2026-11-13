@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Ticket #{{ t.id }} — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span> <span class="current">Ticket #{{ t.id }}</span>
+{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-life-ring"></i> #{{ t.id }} {{ t.subject }}</h1><p>From {{ owner }} · {{ t.status }}</p></div>
+<div class="card" style="max-width:760px;">
+    <div class="card-body">
+        {% for m in msgs %}
+        <div style="margin-bottom:14px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);{% if m.is_admin %}background:rgba(120,120,255,.08);{% endif %}">
+            <div class="text-muted" style="font-size:12px;margin-bottom:6px;">{{ 'Support' if m.is_admin else (m.username or '—') }} · {{ m.created_at }}</div>
+            <div style="white-space:pre-wrap;word-break:break-word;">{{ m.body }}</div>
+        </div>
+        {% endfor %}
+        {% if t.status == 'open' or is_admin %}
+        <form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <textarea class="form-control" name="body" rows="4" maxlength="5000" placeholder="Write a reply…" required></textarea>
+            <div style="display:flex;gap:8px;margin-top:10px;"><button class="btn btn-primary">Reply</button>
+            {% if t.status == 'open' %}<button class="btn btn-secondary" name="action" value="close" formnovalidate>Close ticket</button>{% endif %}</div>
+        </form>
+        {% else %}<div class="text-muted">This ticket is closed. Open a new ticket if you need more help.</div>{% endif %}
+    </div>
+</div>
+{% endblock %}

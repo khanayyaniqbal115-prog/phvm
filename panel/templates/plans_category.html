@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ category.replace('-', ' ')|title }} Plans — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span>
+<a href="{{ url_for('plans_index') }}">Plans</a>
+<span class="sep">›</span> <span class="current" style="text-transform:capitalize;">{{ category.replace('-', ' ') }}</span>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-tags"></i> <span style="text-transform:capitalize;">{{ category.replace('-', ' ') }}</span> Plans</h1>
+    <p>Pricing and specs for this category</p>
+</div>
+
+{% if not plans %}
+<div class="card">
+    <div class="card-body" style="padding:40px;text-align:center;color:var(--text-muted);">
+        No plans in this category yet.
+    </div>
+</div>
+{% else %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;">
+    {% for p in plans %}
+    <div class="card" style="padding:26px;display:flex;flex-direction:column;">
+        <div><span class="type-chip">{% if p.flavor == 'minecraft' %}<i class="fas fa-cube"></i> Minecraft server{% elif p.flavor == 'bot' %}<i class="fas fa-robot"></i> Bot hosting{% elif p.flavor == 'web' %}<i class="fas fa-globe"></i> Web hosting{% else %}<i class="fas fa-server"></i> VPS{% endif %}</span></div>
+        <h3 style="font-size:17px;font-weight:700;margin:10px 0 4px;">{{ p.name }}</h3>
+        <div style="font-family:var(--font-mono);font-size:28px;font-weight:600;color:var(--accent-hover);margin:10px 0;">
+            ⚡{{ "%.2f"|format(p.price) }}<span style="font-size:12px;color:var(--text-muted);font-weight:400;"> Volts / {{ p.duration_days }} days</span>
+        </div>
+        <ul style="list-style:none;padding:0;margin:14px 0;font-size:13px;color:var(--text-secondary);display:flex;flex-direction:column;gap:8px;">
+            <li><i class="fas fa-microchip" style="color:var(--accent-hover);width:18px;"></i> {{ p.cpu_cores }} vCPU</li>
+            <li><i class="fas fa-memory" style="color:var(--accent-hover);width:18px;"></i> {{ p.ram_mb }} MB RAM</li>
+            <li><i class="fas fa-hdd" style="color:var(--accent-hover);width:18px;"></i> {{ p.storage_gb }} GB Storage</li>
+        </ul>
+        <a href="{{ url_for('buy_plan', pid=p.id) }}" class="btn btn-primary" style="margin-top:auto;"><i class="fas fa-bolt"></i> Buy Now</a>
+        {% if session.role == 'admin' %}
+        <a href="{{ url_for('admin_plans') }}" class="btn btn-secondary btn-sm" style="margin-top:8px;"><i class="fas fa-cog"></i> Manage in Admin</a>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

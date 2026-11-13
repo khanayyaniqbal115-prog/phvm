@@ -1,0 +1,18 @@
+{% extends "installing_server_base.html" %}
+{% block kind_name %}Minecraft Server{% endblock %}
+{% block theme_css %}
+<style>
+    .srv-card { border-top: 4px solid #3fb950; }
+    .srv-bar > div { background: repeating-linear-gradient(90deg,#3fb950 0 14px,#2ea043 14px 16px); }
+    .mc-tips { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-top:18px; }
+    .mc-tips div { background:var(--bg-secondary); border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:12.5px; color:var(--text-secondary); }
+    .mc-tips b { display:block; color:var(--text-primary); margin-bottom:2px; font-size:13px; }
+</style>
+{% endblock %}
+{% block extra_body %}
+<div class="mc-tips">
+    <div><b><i class="fas fa-cube"></i> World</b>Your world is generated on the first start.</div>
+    <div><b><i class="fas fa-plug"></i> Plugins/Mods</b>Install them from the panel after setup.</div>
+    <div><b><i class="fas fa-network-wired"></i> Join</b>The address will be in the server panel.</div>
+</div>
+{% endblock %}

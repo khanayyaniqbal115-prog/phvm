@@ -1,0 +1,15 @@
+<div class="card" style="max-width:1000px;margin-top:18px;"><div class="card-header"><h2 style="margin:0;"><i class="fas fa-chart-column"></i> Business report</h2></div><div class="card-body">
+  <div id="rpStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;"></div>
+  <div class="st-lbl" style="opacity:.7;margin-bottom:6px;">Spent from your wallet, last 6 months (⚡)</div><div id="rpBars" style="display:flex;gap:10px;align-items:flex-end;height:120px;margin-bottom:16px;"></div>
+  <div class="st-lbl" style="opacity:.7;margin-bottom:6px;">Top customers</div><div id="rpTop" style="font-size:13px;"></div>
+</div></div>
+<script>
+fetch('/reseller/report').then(function (r) { return r.json(); }).then(function (d) {
+  if (!d.success) return;
+  var S = document.getElementById('rpStats'); [['Customers', d.customers], ['Sites', d.sites], ['Running', d.active], ['Expiring in 7 days', d.expiring_7d], ['Total spent', '⚡' + d.spent_total]].forEach(function (x) { var c = document.createElement('div'); c.style.cssText = 'border:1px solid var(--border);border-radius:12px;padding:10px 12px;'; c.innerHTML = '<div style="font-size:12px;opacity:.65;">' + x[0] + '</div><b style="font-size:20px;">' + x[1] + '</b>'; S.appendChild(c); });
+  var mx = Math.max.apply(null, d.months.map(function (m) { return m.spent; }).concat([1])), B = document.getElementById('rpBars');
+  d.months.forEach(function (m) { var c = document.createElement('div'); c.style.cssText = 'flex:1;text-align:center;font-size:11px;'; c.innerHTML = '<div style="height:' + Math.round(m.spent / mx * 90) + 'px;min-height:2px;border-radius:6px;background:linear-gradient(180deg,#f4f4f7,#8d8d98);"></div><div style="margin-top:4px;opacity:.7;">' + m.m.slice(5) + '</div><b>' + m.spent + '</b>'; B.appendChild(c); });
+  var T = document.getElementById('rpTop'); T.textContent = ''; d.top.forEach(function (t) { var r = document.createElement('div'); r.style.cssText = 'display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);'; var a = document.createElement('span'); a.textContent = t.name; var b = document.createElement('span'); b.textContent = t.sites + ' site(s)' + (t.next ? ' · next expiry ' + t.next : ''); r.append(a, b); T.appendChild(r); });
+  if (!d.top.length) T.textContent = 'No customers yet.';
+});
+</script>

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{{ vm.name }} — App Studio{% endblock %}
+{% block breadcrumb %}<span>PHvm</span> <span class="sep">›</span> <span>App Studio</span> <span class="sep">›</span> <span class="current">{{ vm.name }}</span>{% endblock %}
+{% block extra_css %}
+<style>
+.sx{display:flex;flex-direction:column;gap:10px;height:calc(100vh - 118px);min-height:560px}
+.sx-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)}
+.sx-bar .grow{flex:1;min-width:140px}
+.sx-bar input.cmd{width:100%;font-family:var(--font-mono);font-size:13px}
+.sx-dot{width:9px;height:9px;border-radius:50%;background:var(--text-muted);display:inline-block}.sx-dot.on{background:var(--success);box-shadow:0 0 8px var(--success)}
+.sx-main{flex:1;display:grid;grid-template-columns:230px minmax(0,1fr) 340px;gap:10px;min-height:0}
+.sx-box{border:1px solid var(--border);border-radius:12px;background:var(--bg-card);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.sx-hd{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+.sx-hd button{background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:13px;padding:2px 5px}.sx-hd button:hover{color:var(--text-primary)}
+.sx-tree{overflow:auto;flex:1;padding:4px 0;font-size:13px}
+.sx-it{display:flex;align-items:center;gap:6px;padding:4px 10px;cursor:pointer;white-space:nowrap;color:var(--text-secondary)}
+.sx-it:hover{background:var(--bg-hover);color:var(--text-primary)}.sx-it.sel{background:var(--accent-dim);color:var(--text-primary)}
+.sx-it .x{margin-left:auto;opacity:0;font-size:11px}.sx-it:hover .x{opacity:.7}
+.sx-center{display:flex;flex-direction:column;gap:10px;min-height:0}
+.sx-ed{flex:1;display:flex;min-height:0}
+.sx-gut{width:44px;overflow:hidden;text-align:right;padding:10px 6px 10px 0;color:var(--text-muted);font:13px/1.55 var(--font-mono);background:rgba(0,0,0,.18);user-select:none;white-space:pre}
+.sx-ta,.sx-ta:focus{border:none!important;outline:none!important;box-shadow:none!important;border-radius:0!important}
+.sx-ta{flex:1;resize:none;background:transparent;color:var(--text-primary);font:13px/1.55 var(--font-mono);padding:10px;tab-size:2;white-space:pre;overflow:auto}
+.sx-con{height:190px;flex:none}
+.sx-log{flex:1;overflow:auto;margin:0;padding:8px 10px;font:12px/1.5 var(--font-mono);white-space:pre-wrap;word-break:break-word;color:var(--text-secondary)}
+.sx-chat{overflow:auto;flex:1;padding:10px;display:flex;flex-direction:column;gap:10px;font-size:13px}
+.sx-m{padding:8px 11px;border-radius:10px;max-width:96%;white-space:pre-wrap;word-break:break-word;line-height:1.5}
+.sx-m.u{align-self:flex-end;background:var(--accent-dim)}.sx-m.a{align-self:flex-start;border:1px solid var(--border)}
+.sx-chip{display:inline-block;font:11px var(--font-mono);border:1px solid var(--border);border-radius:6px;padding:1px 6px;margin:4px 4px 0 0;cursor:pointer}
+.sx-in{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border)}.sx-in textarea{flex:1;resize:none;height:54px;font-size:13px}
+.sx-tabs{display:none;gap:6px}
+@media(max-width:1000px){.sx{height:auto}.sx-main{grid-template-columns:1fr}.sx-box,.sx-center{min-height:420px}.sx-tabs{display:flex}.sx-pane{display:none!important}.sx-pane.show{display:flex!important}.sx-center.sx-pane.show{display:flex!important}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="sx" id="sx">
+  <div class="sx-bar">
+    <span class="sx-dot" id="dot"></span><b id="stTxt" style="font-size:13px">…</b>
+    <button class="btn btn-primary btn-sm" onclick="runAct('restart')"><i class="fas fa-play"></i> Run</button>
+    <button class="btn btn-secondary btn-sm" onclick="runAct('stop')"><i class="fas fa-stop"></i> Stop</button>
+    <div class="grow"><input class="form-control cmd" id="cmd" placeholder="Run command, e.g. python main.py" onchange="saveCmd()"></div>
+    <a id="openUrl" class="btn btn-secondary btn-sm" href="#" target="_blank" rel="noopener" style="display:none"><i class="fas fa-up-right-from-square"></i> Open app</a>
+    <select class="form-control" id="tplSel" style="width:auto;font-size:12px" onchange="applyTpl(this)"><option value="">Start from template…</option>{% for k, l in templates.items() %}<option value="{{ k }}">{{ l }}</option>{% endfor %}</select>
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('manage_vm', vm_id=vm.vm_id) }}" title="Server settings"><i class="fas fa-gear"></i></a>
+  </div>
+  <div class="sx-tabs">
+    <button class="btn btn-secondary btn-sm" onclick="showPane('files')">Files</button>
+    <button class="btn btn-secondary btn-sm" onclick="showPane('code')">Code</button>
+    <button class="btn btn-secondary btn-sm" onclick="showPane('ai')">AI</button>
+  </div>
+  <div class="sx-main">
+    <div class="sx-box sx-pane" data-p="files">
+      <div class="sx-hd"><span>Files</span><span><button title="New file" onclick="newFile()"><i class="fas fa-file-circle-plus"></i></button><button title="New folder" onclick="newDir()"><i class="fas fa-folder-plus"></i></button><button title="Refresh" onclick="loadTree()"><i class="fas fa-rotate"></i></button></span></div>
+      <div class="sx-tree" id="tree"></div>
+    </div>
+    <div class="sx-center sx-pane" data-p="code">
+      <div class="sx-box" style="flex:1">
+        <div class="sx-hd"><span id="curName">No file open</span><span><span id="saveSt" style="text-transform:none;letter-spacing:0;font-weight:500"></span> <button title="Save (Ctrl+S)" onclick="saveFile()"><i class="fas fa-floppy-disk"></i> Save</button></span></div>
+        <div class="sx-ed"><div class="sx-gut" id="gut">1</div><textarea class="sx-ta" id="ta" spellcheck="false" disabled></textarea></div>
+      </div>
+      <div class="sx-box sx-con">
+        <div class="sx-hd"><span>Console</span><button onclick="loadLogs()" title="Refresh"><i class="fas fa-rotate"></i></button></div>
+        <pre class="sx-log" id="log">Press Run to start your app.</pre>
+      </div>
+    </div>
+    <div class="sx-box sx-pane" data-p="ai">
+      <div class="sx-hd"><span><i class="fas fa-wand-magic-sparkles"></i> AI builder</span><button id="undoBtn" onclick="undoAI()" title="Undo the last AI change" style="display:none"><i class="fas fa-rotate-left"></i> Undo</button></div>
+      <div class="sx-chat" id="chat"><div class="sx-m a">{% if ai_on %}Tell me what to build, e.g. “make a todo app with a nice UI” or “fix the error in the console”. I write the files, run the app and check it.{% else %}The AI is not switched on yet. Admin: Admin → AI Assistant → add the API key. You can still code by hand here.{% endif %}</div></div>
+      <div class="sx-in"><textarea class="form-control" id="aiIn" placeholder="What should I build or fix?" {% if not ai_on %}disabled{% endif %} onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAI()}"></textarea><button class="btn btn-primary" id="aiBtn" onclick="sendAI()" {% if not ai_on %}disabled{% endif %}><i class="fas fa-paper-plane"></i></button></div>
+    </div>
+  </div>
+</div>
+<script>
+const VM={{ vm.vm_id|tojson }}, CSRF={{ csrf_token|tojson }}, B='/vm/'+VM+'/studio';
+const $=id=>document.getElementById(id);
+let cur='', dirty=false, hist=[], openDirs={'':true}, busy=false;
+async function api(p,body){const o=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify(body)};const r=await fetch(B+p,o);try{return await r.json()}catch(e){return{success:false,message:'Server error'}}}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function toast(m){const s=$('saveSt');s.textContent=m;setTimeout(()=>{if(s.textContent===m)s.textContent=''},2500)}
+function showPane(n){document.querySelectorAll('.sx-pane').forEach(e=>e.classList.toggle('show',e.dataset.p===n))}
+showPane('code');
+async function loadTree(){const el=$('tree');el.innerHTML='';await renderDir('',el,0)}
+async function renderDir(path,el,depth){const j=await api('/tree?path='+encodeURIComponent(path),undefined);if(!j.success){el.innerHTML='<div class="sx-it">'+esc(j.message||'Error')+'</div>';return}
+ for(const e of j.entries){const p=(path?path+'/':'')+e.name;const row=document.createElement('div');row.className='sx-it'+(p===cur?' sel':'');row.style.paddingLeft=(10+depth*14)+'px';
+  row.innerHTML='<i class="fas '+(e.dir?(openDirs[p]?'fa-folder-open':'fa-folder'):'fa-file-code')+'" style="width:14px"></i><span>'+esc(e.name)+'</span><span class="x" title="Delete" data-del="1"><i class="fas fa-trash"></i></span>';
+  row.onclick=async ev=>{if(ev.target.closest('[data-del]')){delPath(p);return}if(e.dir){openDirs[p]=!openDirs[p];loadTree()}else openFile(p)};el.appendChild(row);
+  if(e.dir&&openDirs[p]){const sub=document.createElement('div');el.appendChild(sub);await renderDir(p,sub,depth+1)}}}
+function gutter(){const n=$('ta').value.split('\n').length;let t='';for(let i=1;i<=n;i++)t+=i+'\n';$('gut').textContent=t}
+$('ta').addEventListener('input',()=>{dirty=true;gutter();$('saveSt').textContent='unsaved'});
+$('ta').addEventListener('scroll',()=>{$('gut').scrollTop=$('ta').scrollTop});
+$('ta').addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const t=e.target,s=t.selectionStart;t.value=t.value.slice(0,s)+'  '+t.value.slice(t.selectionEnd);t.selectionStart=t.selectionEnd=s+2;t.dispatchEvent(new Event('input'))}
+ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();saveFile()}});
+async function openFile(p){if(dirty&&!confirm('Discard unsaved changes?'))return;const j=await api('/read',{path:p});if(!j.success){toast(j.message||'Cannot open');return}
+ cur=p;dirty=false;$('ta').disabled=false;$('ta').value=j.content;$('curName').textContent=p;gutter();$('saveSt').textContent='';loadTree();showPane('code')}
+async function saveFile(){if(!cur)return;const j=await api('/write',{path:cur,content:$('ta').value});if(j.success){dirty=false;toast('saved ✓')}else toast(j.message||'Save failed')}
+async function newFile(){const n=prompt('New file name (e.g. app.py or static/style.css):');if(!n)return;const j=await api('/write',{path:n,content:''});if(!j.success){alert(j.message);return}await loadTree();openFile(n)}
+async function newDir(){const n=prompt('New folder name:');if(!n)return;const j=await api('/fs',{action:'mkdir',path:n});if(!j.success)alert(j.message);loadTree()}
+async function delPath(p){if(!confirm('Delete '+p+' ?'))return;const j=await api('/fs',{action:'delete',path:p});if(!j.success){alert(j.message);return}if(cur===p||cur.startsWith(p+'/')){cur='';$('ta').value='';$('ta').disabled=true;$('curName').textContent='No file open';gutter()}loadTree()}
+async function loadState(){const j=await api('/state');if(!j.success)return;$('dot').className='sx-dot'+(j.running?' on':'');$('stTxt').textContent=j.running?'Running':'Stopped';
+ if(document.activeElement!==$('cmd'))$('cmd').value=j.cmd||'';const u=$('openUrl');if(j.url){u.href=j.url;u.style.display=''}else u.style.display='none';$('undoBtn').style.display=j.undo?'':'none'}
+async function loadLogs(){const j=await api('/logs');if(j.success){const l=$('log'),stick=l.scrollTop+l.clientHeight>=l.scrollHeight-30;l.textContent=j.logs||'(no output yet)';if(stick)l.scrollTop=l.scrollHeight}}
+async function runAct(a){if(dirty)await saveFile();$('stTxt').textContent=a==='stop'?'Stopping…':'Starting…';const j=await api('/run',{action:a});if(!j.success)alert(j.message||'Failed');setTimeout(()=>{loadState();loadLogs()},1500)}
+async function saveCmd(){const j=await api('/cmd',{cmd:$('cmd').value});if(!j.success)alert(j.message);else toast('command saved')}
+async function applyTpl(sel){const k=sel.value;sel.value='';if(!k)return;if(!confirm('This replaces the starter files (main.py, index.js …) of this template. Your other files stay. Continue?'))return;const j=await api('/template',{template:k});if(!j.success){alert(j.message);return}cur='';$('ta').value='';$('ta').disabled=true;$('curName').textContent='No file open';gutter();loadTree();loadState()}
+function addMsg(cls,txt,changed){const d=document.createElement('div');d.className='sx-m '+cls;d.textContent=txt;if(changed&&changed.length){const w=document.createElement('div');changed.forEach(f=>{const c=document.createElement('span');c.className='sx-chip';c.textContent=f;c.onclick=()=>openFile(f);w.appendChild(c)});d.appendChild(w)}$('chat').appendChild(d);$('chat').scrollTop=$('chat').scrollHeight;return d}
+async function sendAI(){if(busy)return;const t=$('aiIn').value.trim();if(!t)return;if(dirty)await saveFile();$('aiIn').value='';addMsg('u',t);hist.push({role:'user',content:t});busy=true;$('aiBtn').disabled=true;const w=addMsg('a','Working on it… (this can take a minute)');
+ const j=await api('/ai',{messages:hist,open_file:cur});busy=false;$('aiBtn').disabled=false;w.remove();
+ if(!j.success){addMsg('a',j.message||'Failed');hist.pop();return}hist.push({role:'assistant',content:j.reply});addMsg('a',j.reply,j.changed);
+ await loadTree();if(cur&&j.changed&&j.changed.includes(cur)){const r=await api('/read',{path:cur});if(r.success){$('ta').value=r.content;dirty=false;gutter()}}loadState();loadLogs()}
+async function undoAI(){const j=await api('/undo',{});toast(j.message||'');await loadTree();if(cur){const r=await api('/read',{path:cur});if(r.success){$('ta').value=r.content;dirty=false;gutter()}}loadState()}
+window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+loadTree();loadState();loadLogs();setInterval(()=>{if(!document.hidden){loadState();loadLogs()}},3000);
+</script>
+{% endblock %}

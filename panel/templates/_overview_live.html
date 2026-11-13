@@ -1,0 +1,52 @@
+<style>
+.ov-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-bottom:18px; }
+.ov-card { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; padding:16px 18px; }
+.ov-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; font-size:12px; font-weight:600; color:var(--text-muted); }
+.ov-top b { font-size:20px; color:var(--text-primary); }
+.ov-spark { width:100%; height:48px; display:block; }
+.ov-alerts { margin-bottom:18px; display:flex; flex-direction:column; gap:8px; }
+.ov-alert { display:flex; gap:12px; align-items:center; padding:11px 16px; border-radius:10px; font-size:13.5px; background:var(--bg-card); border:1px solid var(--border); border-left-width:4px; }
+.ov-alert.danger { border-left-color:var(--danger); } .ov-alert.warning { border-left-color:var(--warning); } .ov-alert.info { border-left-color:var(--accent); }
+.ov-alert i { flex-shrink:0; } .ov-alert.danger i { color:var(--danger); } .ov-alert.warning i { color:var(--warning); } .ov-alert.info i { color:var(--accent); }
+.ov-alert a { margin-left:auto; font-weight:600; white-space:nowrap; }
+</style>
+<div class="ov-alerts" id="ovAlerts" style="display:none;"></div>
+<div class="ov-grid" id="ovCharts" style="display:none;">
+  {% for k, label, unit in [('cpu','CPU','%'),('mem','Memory','%'),('disk','Disk','%'),('net','Network','KB/s')] %}
+  <div class="ov-card"><div class="ov-top"><span>{{ label }} · last hour</span><b id="ov-{{ k }}-v">—</b></div>
+    <svg class="ov-spark" id="ov-{{ k }}" viewBox="0 0 200 48" preserveAspectRatio="none"></svg></div>
+  {% endfor %}
+</div>
+<script>
+(function () {
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const ICON = {danger: 'fa-circle-exclamation', warning: 'fa-triangle-exclamation', info: 'fa-circle-info'};
+  function spark(id, vals, fixedMax) {
+    const svg = document.getElementById(id); if (!svg) return;
+    if (!vals || vals.length < 2) { svg.innerHTML = ''; return; }
+    const max = fixedMax || Math.max(1, ...vals) * 1.15, n = vals.length;
+    const pts = vals.map((v, i) => (i / (n - 1) * 200).toFixed(1) + ',' + (46 - Math.min(v, max) / max * 44).toFixed(1));
+    svg.innerHTML = '<polygon points="0,48 ' + pts.join(' ') + ' 200,48" fill="var(--accent)" fill-opacity=".14"/>' +
+      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="1.6" vector-effect="non-scaling-stroke"/>';
+  }
+  async function tick() {
+    if (document.hidden) return;
+    try {
+      const d = await (await fetch('/api/overview')).json(); if (!d.success) return;
+      const box = document.getElementById('ovAlerts');
+      if (d.alerts.length) {
+        box.style.display = 'flex';
+        box.innerHTML = d.alerts.map(a => '<div class="ov-alert ' + esc(a.level) + '"><i class="fas ' + (ICON[a.level] || ICON.info) + '"></i><span>' + esc(a.text) + '</span>' + (a.link ? '<a href="' + esc(a.link) + '">View</a>' : '') + '</div>').join('');
+      } else box.style.display = 'none';
+      if (d.history && d.history.cpu.length) {
+        document.getElementById('ovCharts').style.display = '';
+        [['cpu', 100, '%'], ['mem', 100, '%'], ['disk', 100, '%'], ['net', 0, ' KB/s']].forEach(([k, mx, u]) => {
+          const v = d.history[k]; spark('ov-' + k, v, mx);
+          document.getElementById('ov-' + k + '-v').textContent = (k === 'net' ? Math.round(v[v.length - 1]) : v[v.length - 1].toFixed(0)) + u;
+        });
+      }
+    } catch (e) {}
+  }
+  tick(); setInterval(tick, 15000);
+})();
+</script>

@@ -1,0 +1,41 @@
+{% if vm.runtime == 'docker' %}
+<div class="card" id="pubCard" style="margin:20px 0;"><div class="card-header"><h2 style="margin:0;"><i class="fas fa-share-nodes"></i> Share &amp; public listing</h2></div><div class="card-body">
+  <div class="muted-note" style="margin:0 0 12px;">Get a live status badge and widget for your website, Discord or forum. You can also list this server on the public <a href="/servers" target="_blank">server list</a>, where people vote for it.</div>
+  <label style="display:flex;gap:8px;align-items:center;margin:0 0 10px;"><input type="checkbox" id="pubOn" style="width:auto;"> Turn on the public status badge &amp; widget</label>
+  <div id="pubMore" style="display:none;">
+    <div id="pubSnips" style="display:grid;gap:8px;margin-bottom:12px;"></div>
+    <label style="display:flex;gap:8px;align-items:center;margin:0 0 8px;"><input type="checkbox" id="pubList" style="width:auto;"> List on the public server list</label>
+    <input class="form-control" id="pubDesc" maxlength="140" placeholder="Short description (max 140 characters)" style="margin-bottom:8px;">
+    <button class="btn btn-secondary btn-sm" type="button" id="pubSave">Save</button>
+  </div>
+  {% if session.role == 'admin' %}<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:13px;">Admin: Volts paid to the owner per vote (0 = none, max 5)
+    <input class="form-control" id="pubRw" style="display:inline-block;width:90px;margin:0 8px;" placeholder="0"><button class="btn btn-secondary btn-sm" type="button" id="pubRwSave">Save</button></div>{% endif %}
+</div></div>
+<script>
+(function () {
+  var VMID = {{ vm.vm_id|tojson }}, TOK = {{ csrf_token|tojson }}, H = {'Content-Type': 'application/json', 'X-CSRF-Token': TOK}, $ = function (i) { return document.getElementById(i); };
+  async function post(b) { return (await fetch('/vm/' + VMID + '/public-status', {method: 'POST', headers: H, body: JSON.stringify(b)})).json(); }
+  function snip(label, text) {
+    var d = document.createElement('div'); d.style.cssText = 'display:flex;gap:8px;align-items:center;';
+    var s = document.createElement('code'); s.style.cssText = 'flex:1;font-size:11.5px;word-break:break-all;opacity:.85;'; s.textContent = text;
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm'; b.textContent = label;
+    b.onclick = function () { navigator.clipboard.writeText(text); b.textContent = 'Copied'; setTimeout(function () { b.textContent = label; }, 1400); };
+    d.append(b, s); $('pubSnips').appendChild(d);
+  }
+  function show(r) {
+    $('pubOn').checked = !!r.token; $('pubMore').style.display = r.token ? 'block' : 'none'; $('pubSnips').innerHTML = '';
+    if (!r.token) return;
+    var o = location.origin;
+    snip('Badge', '<img src="' + o + '/badge/' + r.token + '.svg" alt="status">');
+    snip('Markdown', '![status](' + o + '/badge/' + r.token + '.svg)');
+    snip('Widget', '<iframe src="' + o + '/widget/' + r.token + '" width="340" height="86" style="border:0"></iframe>');
+    snip('JSON', o + '/api/status/' + r.token + '.json');
+    $('pubList').checked = !!r.listed; $('pubDesc').value = r.desc || '';
+  }
+  fetch('/vm/' + VMID + '/public-status').then(function (r) { return r.json(); }).then(show).catch(function () {});
+  $('pubOn').onchange = async function () { show(await post({enable: $('pubOn').checked})); };
+  $('pubSave').onclick = async function () { var r = await post({listed: $('pubList').checked, desc: $('pubDesc').value}); show(r); alert('Saved.'); };
+  if ($('pubRwSave')) $('pubRwSave').onclick = async function () { var r = await (await fetch('/admin/vote-reward', {method: 'POST', headers: H, body: JSON.stringify({volts: $('pubRw').value})})).json(); alert(r.message || 'Failed'); };
+})();
+</script>
+{% endif %}

@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    {% if site_icon_url %}
+    <link rel="icon" href="{{ site_icon_url }}">
+    <link rel="shortcut icon" href="{{ site_icon_url }}">
+    {% endif %}
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet"></noscript>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet"></noscript>
+    {% if ui_font_google %}
+    <link href="https://fonts.googleapis.com/css2?family={{ ui_font_google }}&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    {% endif %}
+    {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="{{ asset_css }}">
+
+    <script>try{if(localStorage.getItem("phvm_style_v")!=="3"){localStorage.setItem("phvm_style_v","3");localStorage.setItem("phvm_style","classic");}if(false){document.documentElement.classList.add("danger");document.write('<link rel="stylesheet" href="{{ asset_xcss }}">');}}catch(e){}</script>
+    <script>try{if(localStorage.getItem("phvm_hud")==="1")document.documentElement.classList.add("hud");}catch(e){}</script>
+    <script>{{ polish_js|safe }}</script>
+    <script>try{if(localStorage.getItem("phvm_anim")==="off")document.documentElement.classList.add("no-anim");}catch(e){}</script>
+<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#0f0f11"><link rel="apple-touch-icon" href="/pwa-icon-192.png">
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("/sw.js").catch(function(){});}</script>
+</head>
+<body data-ver="{{ panel_version }}" data-user="{{ session.get('username','') }}">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            {% if sidebar_icon_url %}
+            <img src="{{ sidebar_icon_url }}" alt="">
+            {% else %}
+            <div class="logo-icon"><i class="fas fa-server"></i></div>
+            {% endif %}
+            <div class="brand-text">
+                <h1>{{ site_name }}</h1>
+                <span>V{{ site_version }} • KVM MANAGER</span>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            {% set admin_endpoints = ['admin_dashboard','admin_vms','admin_users','admin_create_user','admin_edit_user','admin_settings','admin_icons','admin_discord_bot','admin_license','admin_os_templates','admin_public_ips','admin_nodes','admin_plans','admin_shop','admin_shop_orders','admin_domain_orders','admin_domains','admin_subdomains','admin_apps_page','admin_ai','admin_templates','admin_web_plans','admin_tickets','admin_revenue','admin_profit','admin_health','admin_audit','admin_sales','admin_maintenance','admin_status', 'admin_check', 'admin_ddos', 'admin_ports', 'admin_payouts', 'admin_backup','admin_update','create_vm','admin_create_server','admin_docker'] %}
+            {% set in_admin_area = (session.role == 'admin') and (request.endpoint in admin_endpoints) %}
+            {% if in_admin_area %}
+            <div class="nav-section">
+                <div class="nav-section-title">Overview</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-item">
+                    <i class="fas fa-arrow-left"></i> Back to User Panel
+                </a>
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+            </div>
+            {% else %}
+            <div class="nav-section">
+                <div class="nav-section-title">Menu</div>
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+                <a href="{{ url_for('my_vms') }}" class="nav-item {% if request.endpoint == 'my_vms' %}active{% endif %}">
+                    <i class="fas fa-desktop"></i> My Virtual Machines
+                </a>
+                <a href="{{ url_for('shop_index') }}" class="nav-item {% if request.endpoint == 'shop_index' %}active{% endif %}">
+                    <i class="fas fa-store"></i> Shop
+                </a>
+                {% if session.get('role') == 'reseller' %}<a href="{{ url_for('reseller_page') }}" class="nav-item {% if request.endpoint == 'reseller_page' %}active{% endif %}">
+                    <i class="fas fa-handshake"></i> Reseller
+                </a>{% endif %}
+                <a href="{{ url_for('web_plans_page') }}" class="nav-item {% if request.endpoint == 'web_plans_page' %}active{% endif %}">
+                    <i class="fas fa-globe"></i> Web Hosting
+                </a>
+                <a href="{{ url_for('support_page') }}" class="nav-item {% if request.endpoint in ('support_page','support_ticket') %}active{% endif %}">
+                    <i class="fas fa-life-ring"></i> Support
+                </a>
+                <a href="{{ url_for('profile') }}" class="nav-item {% if request.endpoint == 'profile' %}active{% endif %}">
+                    <i class="fas fa-user"></i> My Profile
+                </a>
+                <details class="nav-more" {% if request.endpoint in ('shared_with_me','my_orders','payout_page','referral_page','receipts_page','receipt_view','mkt_page','achievements_page','public_server_list','my_apps_page','api_docs_page','changelog_page','activity_log') %}open{% endif %}>
+                    <summary><i class="fas fa-ellipsis"></i> More</summary>
+                <a href="{{ url_for('shared_with_me') }}" class="nav-item {% if request.endpoint == 'shared_with_me' %}active{% endif %}">
+                    <i class="fas fa-user-group"></i> Shared with me
+                </a>
+                <a href="{{ url_for('my_orders') }}" class="nav-item {% if request.endpoint == 'my_orders' %}active{% endif %}">
+                    <i class="fas fa-file-invoice-dollar"></i> My orders
+                </a>
+                {% if payout_on %}<a href="{{ url_for('payout_page') }}" class="nav-item {% if request.endpoint == 'payout_page' %}active{% endif %}">
+                    <i class="fas fa-money-bill-transfer"></i> Withdraw
+                </a>{% endif %}
+                <a href="{{ url_for('referral_page') }}" class="nav-item {% if request.endpoint == 'referral_page' %}active{% endif %}">
+                    <i class="fas fa-user-plus"></i> Invite friends
+                </a>
+                <a href="{{ url_for('receipts_page') }}" class="nav-item {% if request.endpoint in ('receipts_page','receipt_view') %}active{% endif %}">
+                    <i class="fas fa-receipt"></i> Receipts
+                </a>
+                <a href="{{ url_for('mkt_page') }}" class="nav-item {% if request.endpoint == 'mkt_page' %}active{% endif %}">
+                    <i class="fas fa-puzzle-piece"></i> Templates
+                </a>
+                <a href="{{ url_for('achievements_page') }}" class="nav-item {% if request.endpoint == 'achievements_page' %}active{% endif %}">
+                    <i class="fas fa-trophy"></i> Achievements
+                </a>
+                <a href="{{ url_for('public_server_list') }}" class="nav-item {% if request.endpoint == 'public_server_list' %}active{% endif %}">
+                    <i class="fas fa-ranking-star"></i> Server list
+                </a>
+                <a href="{{ url_for('my_apps_page') }}" class="nav-item {% if request.endpoint == 'my_apps_page' %}active{% endif %}">
+                    <i class="fas fa-table-cells-large"></i> All apps
+                </a>
+                <a href="{{ url_for('api_docs_page') }}" class="nav-item {% if request.endpoint == 'api_docs_page' %}active{% endif %}"><i class="fas fa-code"></i> API</a>
+                <a href="{{ url_for('changelog_page') }}" class="nav-item"><i class="fas fa-sparkles"></i> What's new</a>
+                <a href="{{ url_for('activity_log') }}" class="nav-item {% if request.endpoint == 'activity_log' %}active{% endif %}"><i class="fas fa-history"></i> My Activity</a>
+                </details>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-title">Account</div>
+                <a href="{{ url_for('wallet_view') }}" class="nav-item {% if request.endpoint == 'wallet_view' %}active{% endif %}">
+                    <i class="fas fa-wallet"></i> Wallet
+                </a>
+                <a href="{{ url_for('billing_page') }}" class="nav-item {% if request.endpoint == 'billing_page' %}active{% endif %}"><i class="fas fa-file-invoice-dollar"></i> Billing</a>
+            </div>
+            {% if session.role == 'admin' %}
+            <div class="nav-section">
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item" style="justify-content:space-between;">
+                    <span><i class="fas fa-user-shield"></i> Admin Panel</span>
+                    <span class="stat-badge" style="padding:1px 7px;">ADMIN</span>
+                </a>
+            </div>
+            {% endif %}
+            {% endif %}
+            {% if in_admin_area %}
+            {% macro nl(ep, icon, label, kind=None, eps=None, badge=None) -%}
+            {% set on = (request.endpoint in eps) if eps else (request.endpoint == ep) -%}
+            {% if kind %}{% set on = request.endpoint == 'admin_create_server' and request.values.get('kind', 'minecraft') == kind %}{% endif -%}
+            <a href="{{ url_for(ep, kind=kind) if kind else url_for(ep) }}" class="nav-item {{ 'active' if on }}"><i class="{{ icon }}"></i> {{ label }}{% if badge is not none and badge is not undefined %}<span class="stat-badge" style="padding:1px 7px;margin-left:auto;">{{ badge }}</span>{% endif %}</a>
+            {%- endmacro %}
+            {% set ce = request.endpoint %}
+            {% set g_srv = ['admin_vms','create_vm','admin_create_server','admin_docker','admin_apps_page','admin_nodes','admin_os_templates','admin_public_ips','admin_subdomains'] %}
+            {% set g_usr = ['admin_users','admin_create_user','admin_edit_user','admin_tickets','admin_payouts','admin_audit'] %}
+            {% set g_money = ['admin_shop','admin_shop_orders','admin_plans','admin_web_plans','admin_domains','admin_domain_orders','admin_sales','admin_revenue','admin_profit'] %}
+            {% set g_sec = ['admin_ddos','admin_ports','admin_maintenance','admin_health','admin_check'] %}
+            {% set g_pnl = ['admin_settings','admin_icons','admin_discord_bot','admin_ai','admin_templates','admin_status','admin_license','admin_backup','admin_update'] %}
+            <style>
+              .nav-group{margin:2px 0}
+              .nav-group>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:8px 14px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);font-weight:700;border-radius:8px;user-select:none}
+              .nav-group>summary::-webkit-details-marker{display:none}
+              .nav-group>summary:hover{color:var(--text-primary)}
+              .nav-group>summary::after{content:'\f078';font-family:'Font Awesome 6 Free','Font Awesome 5 Free';font-weight:900;font-size:9px;opacity:.6;transition:transform .15s}
+              .nav-group[open]>summary::after{transform:rotate(180deg)}
+              .nav-group[open]>summary{color:var(--text-primary)}
+              .nav-sub{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);opacity:.7;padding:8px 16px 2px}
+            </style>
+            <div class="nav-section" id="adminNav">
+              <details class="nav-group" data-g="srv" {{ 'open' if ce in g_srv or ce == 'admin_dashboard' }}><summary>Servers</summary>
+                {{ nl('admin_vms','fas fa-server','All VMs', badge=sidebar_vm_count) }}
+                {{ nl('admin_docker','fab fa-docker','Docker servers') }}
+                {{ nl('admin_apps_page','fas fa-gauge-high','All apps & load') }}
+                <div class="nav-sub">Create</div>
+                {{ nl('create_vm','fas fa-plus-circle','VM') }}
+                {{ nl('admin_create_server','fas fa-cube','Minecraft', kind='minecraft') }}
+                {{ nl('admin_create_server','fas fa-robot','Bot', kind='bot') }}
+                {{ nl('admin_create_server','fas fa-globe','Web site', kind='web') }}
+                {{ nl('admin_create_server','fas fa-boxes-stacked','App / Game', kind='app') }}
+                <div class="nav-sub">Infrastructure</div>
+                {{ nl('admin_nodes','fas fa-network-wired','Nodes') }}
+                {{ nl('admin_os_templates','fas fa-compact-disc','OS Templates') }}
+                {{ nl('admin_public_ips','fas fa-globe','Public IPs') }}
+                {{ nl('admin_subdomains','fas fa-sitemap','Subdomains') }}
+              </details>
+              <details class="nav-group" data-g="usr" {{ 'open' if ce in g_usr }}><summary>Users &amp; support</summary>
+                {{ nl('admin_users','fas fa-users','Users', eps=['admin_users','admin_create_user','admin_edit_user']) }}
+                {{ nl('admin_tickets','fas fa-life-ring','Tickets') }}
+                {{ nl('admin_payouts','fas fa-money-bill-transfer','Payouts') }}
+                {{ nl('admin_audit','fas fa-history','Audit log') }}
+              </details>
+              <details class="nav-group" data-g="money" {{ 'open' if ce in g_money }}><summary>Sales &amp; money</summary>
+                {{ nl('admin_shop','fas fa-store','Shop', eps=['admin_shop','admin_shop_orders']) }}
+                {{ nl('admin_plans','fas fa-tags','VM plans') }}
+                {{ nl('admin_web_plans','fas fa-box','Web plans') }}
+                {{ nl('admin_domains','fas fa-network-wired','Domains') }}
+                {{ nl('admin_domain_orders','fas fa-globe','Domain orders') }}
+                {{ nl('admin_sales','fas fa-fire','Sale campaigns') }}
+                {{ nl('admin_revenue','fas fa-chart-line','Revenue') }}
+                {{ nl('admin_profit','fas fa-scale-balanced','Cost & profit') }}
+              </details>
+              <details class="nav-group" data-g="sec" {{ 'open' if ce in g_sec }}><summary>Health &amp; security</summary>
+                {{ nl('admin_health','fas fa-heart-pulse','Panel health') }}
+                {{ nl('admin_check','fas fa-clipboard-check','Setup check') }}
+                {{ nl('admin_ports','fas fa-plug-circle-check','Connection doctor') }}
+                {{ nl('admin_ddos','fas fa-shield-halved','DDoS shield') }}
+                {{ nl('admin_maintenance','fas fa-screwdriver-wrench','Maintenance') }}
+              </details>
+              <details class="nav-group" data-g="pnl" {{ 'open' if ce in g_pnl }}><summary>Panel</summary>
+                {{ nl('admin_settings','fas fa-cog','Settings') }}
+                {{ nl('admin_icons','fas fa-image','Icons') }}
+                {{ nl('admin_discord_bot','fab fa-discord','Discord Bot') }}
+                {{ nl('admin_ai','fas fa-robot','AI assistant') }}
+                {{ nl('admin_templates','fas fa-puzzle-piece','Template approvals') }}
+                {{ nl('admin_status','fas fa-signal','Status page') }}
+                {{ nl('admin_license','fas fa-key','License') }}
+                {{ nl('admin_backup','fas fa-box-archive','Panel backup') }}
+                {{ nl('admin_update','fas fa-arrow-up-from-bracket','Update panel') }}
+              </details>
+            </div>
+            <script>
+            (function(){try{var st=JSON.parse(localStorage.getItem('adm_nav')||'{}');document.querySelectorAll('#adminNav .nav-group').forEach(function(d){
+              var k=d.dataset.g,act=!!d.querySelector('.nav-item.active');if(!act&&st[k]!==undefined)d.open=!!st[k];
+              d.addEventListener('toggle',function(){try{var s=JSON.parse(localStorage.getItem('adm_nav')||'{}');s[k]=d.open;localStorage.setItem('adm_nav',JSON.stringify(s))}catch(e){}})})}catch(e){}})();
+            </script>
+            <div class="nav-section">
+                <div class="nav-section-title">Tools</div>
+                <a href="{{ url_for('admin_dashboard') }}#quickActions" class="nav-item">
+                    <i class="fas fa-bolt"></i> Quick Actions
+                </a>
+                <a href="{{ url_for('admin_dashboard') }}#systemStatus" class="nav-item">
+                    <i class="fas fa-circle-info"></i> System Info
+                </a>
+            </div>
+            {% endif %}
+            <div class="nav-section">
+                <a href="{{ url_for('logout') }}" class="nav-item">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="dd-wrap" id="sideUserDd" style="width:100%;">
+                <div class="user-chip" id="sideUserBtn">
+                    {% if session.avatar_url %}
+                    <div class="avatar" style="padding:0;overflow:hidden;">
+                        <img src="{{ session.avatar_url }}" alt="" style="width:100%;height:100%;object-fit:cover;">
+                    </div>
+                    {% else %}
+                    <div class="avatar">{{ session.username[0]|upper if session.username else 'U' }}</div>
+                    {% endif %}
+                    <div class="info">
+                        <div class="name">{{ session.username or 'User' }}</div>
+                        <div class="role">{{ session.role|capitalize if session.role else 'User' }}</div>
+                    </div>
+                    <i class="fas fa-chevron-up" style="font-size:10px;opacity:0.5;margin-left:auto;"></i>
+                </div>
+                <div class="dd-menu" id="sideUserMenu">
+                    <a href="{{ url_for('profile') }}"><i class="fas fa-user"></i> Profile</a>
+                    <a href="{{ url_for('notifications') }}"><i class="fas fa-bell"></i> Notifications</a>
+                    <div class="dd-sep"></div>
+                    <a href="{{ url_for('logout') }}" style="color:var(--danger);"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="main">
+        <header class="topbar">
+            <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="breadcrumb">
+                <a href="{{ url_for('index') }}"><i class="fas fa-home"></i></a>
+                <span class="sep">›</span>
+                {% block breadcrumb %}<span class="current">Dashboard</span>{% endblock %}
+            </div>
+            <div class="topbar-right">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search VMs, users..." id="globalSearch">
+                </div>
+                <div class="status-pill">
+                    <span class="dot"></span> Online
+                </div>
+                <div class="dd-wrap" id="plansDd">
+                    <button type="button" class="icon-btn" id="plansBtn" title="Plans" style="width:auto;padding:0 12px;gap:6px;display:flex;align-items:center;">
+                        <i class="fas fa-tags"></i> <span style="font-size:13px;">Plans</span> <i class="fas fa-chevron-down" style="font-size:9px;opacity:0.6;"></i>
+                    </button>
+                    <div class="dd-menu" id="plansMenu">
+                        <div class="dd-label">Plan Categories</div>
+                        {% if plan_categories %}
+                            {% for cat in plan_categories %}
+                            <a href="{{ url_for('plans_category', category=cat) }}" style="text-transform:capitalize;"><i class="fas fa-layer-group"></i> {{ cat.replace('-', ' ') }}</a>
+                            {% endfor %}
+                            <div class="dd-sep"></div>
+                        {% else %}
+                            <div class="dd-notif-item"><span>No plan categories yet</span></div>
+                            <div class="dd-sep"></div>
+                        {% endif %}
+                        <a href="{{ url_for('plans_index') }}"><i class="fas fa-list"></i> View all plans</a>
+                        {% if session.role == 'admin' %}
+                        <a href="{{ url_for('admin_plans') }}"><i class="fas fa-cog"></i> Manage plans</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <button type="button" class="icon-btn" id="themeToggle" title="Toggle theme">
+                    <i class="fas fa-moon" id="themeIcon"></i>
+                </button>
+                <div class="dd-wrap" id="notifDd">
+                    <button type="button" class="icon-btn" id="notifBtn" title="Notifications">
+                        <i class="fas fa-bell"></i>
+                        {% if unread_notifications %}<span class="badge">{{ unread_notifications }}</span>{% endif %}
+                    </button>
+                    <div class="dd-menu" id="notifMenu">
+                        <div class="dd-label">Notifications</div>
+                        {% if recent_notifications %}
+                            {% for n in recent_notifications %}
+                            <a href="{{ url_for('notifications') }}" class="dd-notif-item">
+                                <strong>{{ n.title }}</strong>
+                                <span>{{ n.message[:60] }}{% if n.message|length > 60 %}…{% endif %}</span>
+                            </a>
+                            {% endfor %}
+                            <div class="dd-sep"></div>
+                        {% else %}
+                            <div class="dd-notif-item"><span>No notifications</span></div>
+                            <div class="dd-sep"></div>
+                        {% endif %}
+                        <a href="{{ url_for('notifications') }}"><i class="fas fa-list"></i> View all</a>
+                    </div>
+                </div>
+                <div class="dd-wrap" id="userDd">
+                    <div class="user-dropdown" id="userBtn">
+                        {% if session.avatar_url %}
+                        <div class="avatar" style="padding:0;overflow:hidden;">
+                            <img src="{{ session.avatar_url }}" alt="" style="width:100%;height:100%;object-fit:cover;">
+                        </div>
+                        {% else %}
+                        <div class="avatar">{{ session.username[0]|upper if session.username else 'U' }}</div>
+                        {% endif %}
+                        <span>{{ session.username or 'User' }}</span>
+                        <i class="fas fa-chevron-down" style="font-size:10px;opacity:0.6;"></i>
+                    </div>
+                    <div class="dd-menu" id="userMenu">
+                        <div class="dd-label">{{ session.username }} · {{ session.role|capitalize if session.role else 'User' }}</div>
+                        <a href="{{ url_for('profile') }}"><i class="fas fa-user"></i> Profile</a>
+                        <a href="{{ url_for('notifications') }}"><i class="fas fa-bell"></i> Notifications{% if unread_notifications %} ({{ unread_notifications }}){% endif %}</a>
+                        {% if session.role == 'admin' %}
+                        <a href="{{ url_for('admin_settings') }}"><i class="fas fa-cog"></i> Settings</a>
+                        {% endif %}
+                        <div class="dd-sep"></div>
+                        <a href="#" onclick="phvmPalette();return false;"><i class="fas fa-bolt"></i> Quick jump <span style="margin-left:auto;opacity:.5;font-size:11px;">Ctrl+K</span></a>
+                        <a href="#" id="hudToggle" onclick="phvmToggleHud();return false;"><i class="fas fa-circle-half-stroke"></i> <span>Look: Classic</span></a>
+                        <a href="#" onclick="phvmToggleAnim();return false;"><i class="fas fa-wand-magic-sparkles"></i> <span id="animLabel">Animations: On</span></a>
+                        <a href="{{ url_for('logout') }}" style="color:var(--danger);"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="content">
+            {% include '_banners.html' %}
+            {% if session.get('role') == 'admin' and maint_active() %}<div style="margin-bottom:16px;padding:12px 16px;border-radius:12px;border:1px solid var(--border);display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;"><span>🛠 <b>Maintenance mode is ON</b> — normal users are blocked. You can still use the panel.</span><a class="btn btn-secondary btn-sm" href="{{ url_for('admin_maintenance') }}">Manage</a></div>{% endif %}
+            {% if announce_text %}<div id="announceBar" data-k="{{ announce_text|length }}-{{ announce_text[:12] }}" style="margin-bottom:16px;padding:12px 16px;border-radius:10px;border:1px solid var(--border);display:flex;gap:12px;align-items:center;justify-content:space-between;background:{{ '#3d1d1d' if announce_level == 'danger' else '#3a2f12' if announce_level == 'warning' else '#14283d' }};">
+                <span><i class="fas fa-bullhorn"></i> {{ announce_text }}</span><button type="button" class="btn btn-secondary btn-sm" onclick="try{localStorage.setItem('ann_'+this.parentNode.dataset.k,'1')}catch(e){};this.parentNode.remove()">Dismiss</button></div>
+            <script>try{var b=document.getElementById('announceBar');if(b&&localStorage.getItem('ann_'+b.dataset.k))b.remove();}catch(e){}</script>{% endif %}
+            {% block content %}{% endblock %}
+        </div>
+
+        <footer class="app-footer">
+            <span>{{ site_name }} V{{ site_version }} — <a href="{{ url_for('legal_page', slug='terms') }}">Terms</a> · <a href="{{ url_for('legal_page', slug='privacy') }}">Privacy</a> · <a href="{{ url_for('legal_page', slug='refund') }}">Refunds</a></span>
+            <span id="clock"></span>
+        </footer>
+    </div>
+
+    <!-- Flash messages -->
+    <div class="flash-container" id="flashes">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for cat, msg in messages %}
+            <div class="flash flash-{{ cat }}">
+                <i class="fas fa-{% if cat=='success' %}check-circle{% elif cat=='danger' %}exclamation-circle{% elif cat=='warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                {{ msg }}
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+    </div>
+
+    <script>
+        // Auto-hide flashes
+        setTimeout(() => {
+            document.querySelectorAll('.flash').forEach(el => {
+                el.style.transition = 'opacity 0.4s';
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 400);
+            });
+        }, 4500);
+
+        function updateClock() {
+            const el = document.getElementById('clock');
+            if (el) el.textContent = new Date().toLocaleTimeString();
+        }
+        updateClock();
+        setInterval(function () { if (!document.hidden) updateClock(); }, 1000);
+
+        // Theme toggle
+        (function() {
+            const key = 'phvm-theme';
+            const body = document.body;
+            const icon = document.getElementById('themeIcon');
+            function apply(theme) {
+                if (theme === 'light') {
+                    body.classList.add('theme-light');
+                    if (icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); }
+                } else {
+                    body.classList.remove('theme-light');
+                    if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); }
+                }
+                localStorage.setItem(key, theme);
+            }
+            apply(localStorage.getItem(key) || 'dark');
+            const btn = document.getElementById('themeToggle');
+            if (btn) btn.addEventListener('click', () => {
+                apply(body.classList.contains('theme-light') ? 'dark' : 'light');
+            });
+        })();
+
+        // Global search — live-filters any data table on the current page
+        // (VMs, users, notifications, audit log, etc.)
+        (function() {
+            const inp = document.getElementById('globalSearch');
+            if (!inp) return;
+            const tables = document.querySelectorAll('.data-table tbody');
+            if (!tables.length) return;
+            let noResultsEl = null;
+            function ensureNoResults(tbody) {
+                if (!noResultsEl) {
+                    noResultsEl = document.createElement('tr');
+                    noResultsEl.id = 'globalSearchEmpty';
+                    const td = document.createElement('td');
+                    td.colSpan = 12;
+                    td.style.cssText = 'padding:28px;text-align:center;color:var(--text-muted);';
+                    td.innerHTML = '<i class="fas fa-search" style="margin-right:6px;"></i> No matching results';
+                    noResultsEl.appendChild(td);
+                }
+                return noResultsEl;
+            }
+            function filter(q) {
+                let anyVisible = false;
+                tables.forEach(tbody => {
+                    let visibleInThis = 0;
+                    tbody.querySelectorAll('tr').forEach(tr => {
+                        if (tr.id === 'globalSearchEmpty') { tr.remove(); return; }
+                        const match = q === '' || tr.textContent.toLowerCase().includes(q);
+                        tr.style.display = match ? '' : 'none';
+                        if (match) { visibleInThis++; anyVisible = true; }
+                    });
+                    const empty = tbody.querySelector('#globalSearchEmpty');
+                    if (visibleInThis === 0 && q !== '') {
+                        if (!empty) tbody.appendChild(ensureNoResults(tbody).cloneNode(true));
+                    } else if (empty) {
+                        empty.remove();
+                    }
+                });
+                return anyVisible;
+            }
+            let deb;
+            inp.addEventListener('input', function() {
+                clearTimeout(deb);
+                const q = this.value.trim().toLowerCase();
+                deb = setTimeout(() => filter(q), 120);
+            });
+            inp.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') { this.value = ''; filter(''); this.blur(); }
+            });
+            // "/" jumps focus to search from anywhere on the page (unless already typing)
+            document.addEventListener('keydown', function(e) {
+                if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    inp.focus();
+                }
+            });
+        })();
+
+        // Generic client-side table sorter. Call from a <th onclick="sortTable('tableId', colIndex, 'text'|'num')">.
+        // Skips the empty-state / no-results row if present. Toggles asc/desc on repeated clicks of the same column.
+        const _sortState = {};
+        function sortTable(tableId, colIndex, type) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            const tbody = table.tBodies[0];
+            const rows = Array.from(tbody.querySelectorAll('tr')).filter(tr => tr.id !== 'globalSearchEmpty');
+            const key = tableId + ':' + colIndex;
+            const asc = _sortState[key] = !_sortState[key];
+            rows.sort((a, b) => {
+                let av = (a.children[colIndex]?.textContent || '').trim();
+                let bv = (b.children[colIndex]?.textContent || '').trim();
+                if (type === 'num') {
+                    av = parseFloat(av.replace(/[^0-9.\-]/g, '')) || 0;
+                    bv = parseFloat(bv.replace(/[^0-9.\-]/g, '')) || 0;
+                    return asc ? av - bv : bv - av;
+                }
+                return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+            });
+            rows.forEach(tr => tbody.appendChild(tr));
+            table.querySelectorAll('th.sortable').forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
+            const th = table.querySelectorAll('th')[colIndex];
+            if (th) th.classList.add(asc ? 'sort-asc' : 'sort-desc');
+        }
+
+        // Dropdown helper
+        function setupDd(btnId, menuId) {
+            const btn = document.getElementById(btnId);
+            const menu = document.getElementById(menuId);
+            if (!btn || !menu) return;
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // close others
+                document.querySelectorAll('.dd-menu.open').forEach(m => {
+                    if (m !== menu) m.classList.remove('open');
+                });
+                menu.classList.toggle('open');
+            });
+        }
+        setupDd('userBtn', 'userMenu');
+        setupDd('notifBtn', 'notifMenu');
+        setupDd('sideUserBtn', 'sideUserMenu');
+        setupDd('plansBtn', 'plansMenu');
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.dd-menu.open').forEach(m => m.classList.remove('open'));
+        });
+        document.querySelectorAll('.dd-menu').forEach(m => {
+            m.addEventListener('click', e => e.stopPropagation());
+        });
+
+        // Mobile sidebar
+        document.addEventListener('click', (e) => {
+            const sb = document.getElementById('sidebar');
+            if (window.innerWidth <= 900 && sb && sb.classList.contains('open') &&
+                !sb.contains(e.target) && !e.target.closest('.menu-toggle')) {
+                sb.classList.remove('open');
+            }
+        });
+    </script>
+    
+    <script>
+    // Auto-inject CSRF token into all POST forms
+    (function() {
+        const token = {{ csrf_token|tojson if csrf_token is defined else '""' }};
+        window.PHVM_CSRF = token; window.PHVM_AI = {{ 'true' if ai_enabled() else 'false' }};
+        if (!token) return;
+        document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(f => {
+            if (!f.querySelector('input[name="_csrf"]')) {
+                const i = document.createElement('input');
+                i.type = 'hidden'; i.name = '_csrf'; i.value = token;
+                f.prepend(i);
+            }
+        });
+    })();
+    </script>
+
+    <script>
+    // Universal clipboard helper — works over plain HTTP too (navigator.clipboard
+    // only exists in secure contexts: HTTPS or localhost). Falls back to the
+    // legacy execCommand('copy') trick via a hidden textarea otherwise.
+    function phvmCopy(text, btnEl) {
+        text = (text == null) ? '' : String(text);
+        const finish = (ok) => {
+            if (!btnEl) { if (!ok) alert(text); return; }
+            const original = btnEl.innerHTML;
+            btnEl.innerHTML = ok
+                ? (btnEl.innerHTML.includes('fa-') ? '<i class="fas fa-check"></i> Copied' : 'Copied')
+                : original;
+            if (!ok) alert(text);
+            setTimeout(() => { btnEl.innerHTML = original; }, 1500);
+        };
+        if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => finish(true)).catch(() => phvmCopyFallback(text, finish));
+        } else {
+            phvmCopyFallback(text, finish);
+        }
+    }
+    function phvmCopyFallback(text, finish) {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.top = '0';
+            ta.style.left = '0';
+            ta.style.opacity = '0';
+            ta.style.pointerEvents = 'none';
+            document.body.appendChild(ta);
+            ta.focus({ preventScroll: true });
+            ta.select();
+            ta.setSelectionRange(0, text.length); // needed for iOS Safari / some mobile browsers
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+            document.body.removeChild(ta);
+            finish(!!ok);
+        } catch (e) {
+            finish(false);
+        }
+    }
+    </script>
+
+
+
+
+
+    <script>
+    (function () {
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var SEL = '.card, .stat-card, .action-card, .plan-card, .product-card, .hero-card';
+
+        /* Cursor spotlight: sets per-card CSS vars the glass background reads */
+        var _sp = null, _pend = false;
+        document.addEventListener('mousemove', function (e) {
+            _sp = e; if (_pend) return; _pend = true;
+            requestAnimationFrame(function () {
+                _pend = false; var ev = _sp; if (!ev) return;
+                var el = ev.target.closest ? ev.target.closest(SEL) : null;
+                if (!el) return;
+                var r = el.getBoundingClientRect();
+                el.style.setProperty('--mx', (ev.clientX - r.left) + 'px');
+                el.style.setProperty('--my', (ev.clientY - r.top) + 'px');
+            });
+        }, { passive: true });
+        document.addEventListener('mouseout', function (e) {
+            var el = e.target.closest ? e.target.closest(SEL) : null;
+            if (el && (!e.relatedTarget || !el.contains(e.relatedTarget))) {
+                el.style.setProperty('--mx', '-999px');
+                el.style.setProperty('--my', '-999px');
+            }
+        });
+
+        /* Count-up on stat numbers (keeps prefix like ⚡ and suffix like " GB") */
+        if (!reduce) {
+            document.querySelectorAll('.stat-value').forEach(function (n) {
+                var tn = null;
+                for (var i = 0; i < n.childNodes.length; i++) {
+                    var c = n.childNodes[i];
+                    if (c.nodeType === 3 && /\d/.test(c.nodeValue)) { tn = c; break; }
+                }
+                if (!tn) return;
+                var original = tn.nodeValue;
+                var m = original.match(/^(\s*[^\d\-\s]*)(-?\d[\d,]*(?:\.\d+)?)([\s\S]*)$/);
+                if (!m) return;
+                var target = parseFloat(m[2].replace(/,/g, ''));
+                if (!isFinite(target) || target === 0) return;
+                var dec = (m[2].split('.')[1] || '').length;
+                var t0 = null, dur = 900;
+                function step(ts) {
+                    if (t0 === null) t0 = ts;
+                    var p = Math.min(1, (ts - t0) / dur);
+                    var eased = 1 - Math.pow(1 - p, 3);
+                    tn.nodeValue = p < 1 ? m[1] + (target * eased).toFixed(dec) + m[3] : original;
+                    if (p < 1) requestAnimationFrame(step);
+                }
+                requestAnimationFrame(step);
+            });
+        }
+    })();
+    </script>
+    {% block extra_js %}{% endblock %}
+<script src="{{ asset_js }}"></script>
+{% if unread_notifications %}<script>try{document.title="({{ unread_notifications }}) "+document.title.replace(/^\(\d+\)\s*/,"");}catch(e){}</script>{% endif %}
+</body>
+</html>

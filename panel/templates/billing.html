@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Billing — {{ site_name }}{% endblock %}
+{% block breadcrumb %}<span>PHvm</span> <span class="sep">›</span> <span class="current">Billing</span>{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-file-invoice-dollar"></i> Billing</h1><p>What is coming up, what you spent, and which servers renew by themselves.</p></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;margin-bottom:18px;">
+  <div class="card"><div class="card-body"><div class="text-muted" style="font-size:12px;">Wallet</div><div style="font-size:26px;font-weight:700;">⚡{{ '%g'|format(b.balance) }}</div><a href="{{ url_for('wallet_view') }}" style="font-size:12px;">Add Volts</a></div></div>
+  <div class="card"><div class="card-body"><div class="text-muted" style="font-size:12px;">Renewals in the next 30 days</div><div style="font-size:26px;font-weight:700;">⚡{{ '%g'|format(b.due) }}</div></div></div>
+  <div class="card"><div class="card-body"><div class="text-muted" style="font-size:12px;">After renewals you will have</div><div style="font-size:26px;font-weight:700;">⚡{{ '%g'|format(b.balance - b.due) }}</div>{% if b.short > 0 %}<div style="font-size:12px;">⚠️ Add at least ⚡{{ '%g'|format(b.short) }}</div>{% endif %}</div></div>
+</div>
+{% if b.short > 0 %}<div class="card" style="margin-bottom:18px;"><div class="card-body">⚠️ Your wallet is ⚡{{ '%g'|format(b.short) }} short for the renewals above. Servers with auto-renew on would stop if it stays short.</div></div>{% endif %}
+<div class="card" style="margin-bottom:18px;"><div class="card-header"><h2>Upcoming</h2></div><div class="card-body" style="overflow-x:auto;">
+<table class="data-table"><thead><tr><th>Server</th><th>Ends</th><th>Plan</th><th>Renewal</th><th>Auto-renew</th><th></th></tr></thead><tbody>
+{% for i in b['items'] %}<tr><td>{{ i.name }}</td><td>{{ i.expiry }} <span class="text-muted">({{ i.days ~ ' d' if i.days >= 0 else 'ended' }})</span></td><td>{{ i.plan or '—' }}</td><td>{{ ('⚡' ~ ('%g'|format(i.volts))) if i.volts is not none else '—' }}</td>
+<td>{% if i.web %}<label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer;"><input type="checkbox" {{ 'checked' if i.auto }} onchange="ar('{{ i.vm_id }}', this)"> <span>{{ 'On' if i.auto else 'Off' }}</span></label>{% else %}<span class="text-muted">manual</span>{% endif %}</td>
+<td><a class="btn btn-secondary btn-sm" href="{{ url_for('web_plans_page') }}{% if i.web %}?renew={{ i.vm_id }}{% endif %}">Renew</a></td></tr>
+{% else %}<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted);">Nothing with an end date yet.</td></tr>{% endfor %}
+</tbody></table></div></div>
+<div class="card" style="margin-bottom:18px;"><div class="card-header"><h2>Last 6 months</h2></div><div class="card-body">
+{% for m in b.months %}<div style="display:grid;grid-template-columns:64px 1fr 190px;gap:10px;align-items:center;margin:6px 0;font-size:13px;"><span>{{ m.m }}</span>
+<div><div style="height:7px;border-radius:4px;background:var(--accent);width:{{ (m.out / b.mx * 100)|round|int }}%;margin-bottom:3px;"></div><div style="height:5px;border-radius:4px;background:var(--border);width:{{ (m['in'] / b.mx * 100)|round|int }}%;"></div></div>
+<span class="text-muted">spent ⚡{{ '%g'|format(m.out) }} · added ⚡{{ '%g'|format(m['in']) }}</span></div>{% endfor %}
+<p class="form-hint">Bright bar = spent, grey bar = added to wallet.</p></div></div>
+<div class="card"><div class="card-header"><h2>Latest wallet activity</h2></div><div class="card-body">
+{% for t in b.txns %}<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;"><span>{{ t.description or t.type }}</span><b>{{ '+' if t.amount >= 0 }}{{ '%g'|format(t.amount) }}</b></div>{% else %}<span class="text-muted">No activity yet.</span>{% endfor %}
+<p style="margin:12px 0 0;"><a href="{{ url_for('wallet_view') }}">Full history</a> · <a href="{{ url_for('my_orders') }}">My orders &amp; receipts</a></p></div></div>
+<script>
+async function ar(id, el) {
+  const r = await (await fetch('/billing/autorenew', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': {{ csrf_token|tojson }}}, body: JSON.stringify({vm_id: id, on: el.checked})})).json();
+  if (!r.success) { el.checked = !el.checked; alert(r.message || 'Failed'); return; }
+  el.nextElementSibling.textContent = r.on ? 'On' : 'Off';
+}
+</script>
+{% endblock %}

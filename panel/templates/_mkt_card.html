@@ -1,0 +1,19 @@
+{% if vm.runtime == 'docker' and vm.provision_kind in ('minecraft', 'web') %}
+<div class="card" id="mktCard" style="margin:20px 0;display:none;"><div class="card-header"><h2 style="margin:0;"><i class="fas fa-puzzle-piece"></i> Share as a template</h2></div><div class="card-body">
+  <div class="muted-note" style="margin:0 0 10px;">Turn this server's setup (plugins, configs, project files — not worlds or the server jar) into a template others can install. An admin approves it first. <b>Everything in it is shared</b> — remove passwords and private files before publishing. <a href="/templates">Browse templates</a></div>
+  <input class="form-control" id="mkName" placeholder="Template name" maxlength="60" style="margin-bottom:8px;"><input class="form-control" id="mkDesc" placeholder="What is it? (max 300 characters)" maxlength="300" style="margin-bottom:8px;">
+  <input class="form-control" id="mkPrice" placeholder="Price in Volts (0 = free, max 50)" style="margin-bottom:8px;max-width:260px;"><button class="btn btn-secondary btn-sm" type="button" id="mkGo">Publish for approval</button><div class="muted-note" id="mkMsg" style="margin:8px 0 0;"></div>
+</div></div>
+<script>
+(function () {
+  var el = document.getElementById('mktCard'); var KIND = {{ (vm.provision_kind or '')|tojson }};
+  var ok = KIND === 'minecraft' || {{ ('true' if vm.provision_kind == 'web' and ((vm.provision_opt or '').find('"app": "code"') >= 0 or (vm.provision_opt or '').find('"app": "sandbox"') >= 0 or (vm.provision_opt or '').find('"app": "vscode"') >= 0 or (vm.provision_opt or '').find('"app": "rstudio"') >= 0) else 'false') }};
+  if (!ok) return; el.style.display = '';
+  document.getElementById('mkGo').onclick = async function () {
+    var m = document.getElementById('mkMsg'); m.textContent = 'Packing files…';
+    var r = await (await fetch('/vm/' + {{ vm.vm_id|tojson }} + '/template/publish', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': {{ csrf_token|tojson }}}, body: JSON.stringify({name: document.getElementById('mkName').value, desc: document.getElementById('mkDesc').value, price: document.getElementById('mkPrice').value})})).json();
+    m.textContent = r.message + (r.files ? '  Files: ' + r.files.slice(0, 12).join(', ') + (r.files.length > 12 ? ' …' : '') : '');
+  };
+})();
+</script>
+{% endif %}

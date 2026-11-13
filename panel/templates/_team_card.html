@@ -1,0 +1,23 @@
+<div class="card" id="tmCard" style="display:none;margin-top:18px;"><div class="card-body">
+  <div class="side-label">Team access</div>
+  <div class="muted-note" style="margin:0 0 10px;">Let a friend manage this server (console, files, start/stop). They cannot delete it, change billing or domains.</div>
+  <div style="display:flex;gap:8px;"><input class="form-control" id="tmIn" placeholder="username or email" style="min-width:0;"><button class="btn btn-primary btn-sm" onclick="tmAdd()">Add</button></div>
+  <div id="tmList" style="margin-top:10px;"></div>
+</div></div>
+<script>
+(function () {
+  const VMID = {{ vm.vm_id|tojson }}, TOK = {{ csrf_token|tojson }}, g = id => document.getElementById(id);
+  const post = b => fetch('/vm/' + VMID + '/team', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': TOK}, body: JSON.stringify(b)}).then(r => r.json());
+  async function load() {
+    let d; try { d = await (await fetch('/vm/' + VMID + '/team')).json(); } catch (e) { return; }
+    if (!d.success) return; g('tmCard').style.display = '';
+    const box = g('tmList'); box.innerHTML = '';
+    (d.members || []).forEach(m => { const r = document.createElement('div'); r.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--border);font-size:13px;';
+      const n = document.createElement('span'); n.textContent = m.username; const b = document.createElement('button'); b.className = 'btn btn-secondary btn-sm'; b.textContent = 'Remove';
+      b.onclick = async () => { if (!confirm('Remove ' + m.username + '?')) return; const x = await post({action: 'remove', user_id: m.user_id}); if (!x.success) alert(x.message); load(); };
+      r.append(n, b); box.append(r); });
+  }
+  window.tmAdd = async () => { const username = g('tmIn').value.trim(); if (!username) return; const d = await post({username}); alert(d.message); if (d.success) g('tmIn').value = ''; load(); };
+  load();
+})();
+</script>

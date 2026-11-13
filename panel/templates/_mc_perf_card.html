@@ -1,0 +1,27 @@
+{% if vm.runtime == 'docker' and vm.provision_kind == 'minecraft' %}
+<div class="card" id="perfCard" style="margin:20px 0;"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;"><i class="fas fa-gauge-high"></i> Performance</h2><b id="pfTps" style="font-size:20px;">–</b></div><div class="card-body">
+  <div id="pfInfo" class="muted-note" style="margin:0 0 10px;">Loading…</div>
+  <div id="pfAdv" style="font-size:13px;margin-bottom:10px;"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <button class="btn btn-secondary btn-sm" type="button" data-p="smooth">Smooth (view 6)</button>
+    <button class="btn btn-secondary btn-sm" type="button" data-p="balanced">Balanced (view 8)</button>
+    <button class="btn btn-secondary btn-sm" type="button" data-p="max">Pretty (view 12)</button>
+    <label style="display:inline-flex;gap:6px;align-items:center;font-size:13px;"><input type="checkbox" id="pfRestart" checked style="width:auto;"> restart now</label>
+  </div>
+  <div class="muted-note" id="pfMsg" style="margin:10px 0 0;"></div>
+</div></div>
+<script>
+(function(){var VM={{ vm.vm_id|tojson }},T={{ csrf_token|tojson }},$=function(i){return document.getElementById(i)};
+function load(){fetch('/vm/'+VM+'/server/mc/perf').then(function(r){return r.json()}).then(function(j){
+ if(!j.success){$('pfInfo').textContent=j.message||'Not available';return}
+ var t=j.tps;$('pfTps').textContent=t?(t[0].toFixed(1)+' TPS'):(j.running?'TPS n/a':'offline');
+ $('pfTps').style.color=!t?'':t[0]>=19?'#7bd88f':t[0]>=17?'#e5c07b':'#e06c75';
+ $('pfInfo').textContent=(j.running?'Running':'Stopped')+' · view distance '+j.view+' · simulation '+j.sim+(j.cpu?' · CPU '+j.cpu:'')+(j.mem?' · RAM '+j.mem:'')+' · preset: '+j.preset;
+ $('pfAdv').textContent=(j.advice||[]).join(' ');
+ document.querySelectorAll('#perfCard [data-p]').forEach(function(b){b.className='btn btn-'+(b.dataset.p===j.preset?'primary':'secondary')+' btn-sm'});
+}).catch(function(){$('pfInfo').textContent='Could not load.'})}
+document.querySelectorAll('#perfCard [data-p]').forEach(function(b){b.onclick=function(){
+ fetch('/vm/'+VM+'/server/mc/tune',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':T},body:JSON.stringify({preset:b.dataset.p,restart:$('pfRestart').checked})}).then(function(r){return r.json()}).then(function(j){$('pfMsg').textContent=j.message||'';setTimeout(load,1500)})}});
+load();setInterval(function(){if(!document.hidden)load()},30000);})();
+</script>
+{% endif %}

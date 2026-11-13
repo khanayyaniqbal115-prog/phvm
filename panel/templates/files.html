@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Files — {{ vm.name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span>
+<a href="{{ url_for('manage_vm', vm_id=vm.vm_id) }}">{{ vm.name }}</a>
+<span class="sep">›</span> <span class="current">Files</span>
+{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+    <div>
+        <h1><i class="fas fa-folder-open"></i> Files — {{ vm.name }}</h1>
+        <p>
+            {% if is_running %}<span class="badge badge-success">● RUNNING</span>{% else %}<span class="badge badge-secondary">● STOPPED</span>{% endif %}
+            · {% if vm.runtime == 'docker' %}Server files{% else %}Browsing the VM's own filesystem over SFTP{% endif %}
+        </p>
+    </div>
+    <div class="btn-group">
+        <a href="{{ url_for('manage_vm', vm_id=vm.vm_id) }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+    </div>
+</div>
+
+{% if not is_running %}
+<div class="card mt-2"><div class="card-body" style="padding:18px 20px;">
+    <p style="color:var(--warning);">This VM must be running before you can browse its files.</p>
+</div></div>
+{% elif not HAVE_PARAMIKO and vm.runtime != 'docker' %}
+<div class="card mt-2"><div class="card-body" style="padding:18px 20px;">
+    <p style="color:var(--danger);">paramiko is not installed on the host — the file manager needs it (same as the web shell).</p>
+</div></div>
+{% else %}
+<div class="mt-2">{% include '_filemanager.html' %}</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if is_running and (HAVE_PARAMIKO or vm.runtime == 'docker') %}
+<script>
+fmInit({{ vm.vm_id|tojson }}, {{ csrf_token|tojson if csrf_token is defined else '""' }}, new URLSearchParams(location.search).get('path') || '/');
+</script>
+{% endif %}
+{% endblock %}

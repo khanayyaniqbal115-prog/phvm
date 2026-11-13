@@ -1,0 +1,250 @@
+<style>
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+.tab { background: none; border: none; color: var(--text-secondary); font: inherit; font-weight: 600; font-size: 13px;
+  padding: 10px 14px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; display: inline-flex; gap: 7px; align-items: center; }
+.tab:hover { color: var(--text-primary); }
+.tab.active { color: var(--text-primary); border-bottom-color: var(--v-accent, var(--accent)); }
+.pane { display: none; } .pane.active { display: block; }
+.busy-banner { background: rgba(242,176,76,.12); border: 1px solid rgba(242,176,76,.35); color: var(--warning); border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; display: none; }
+.row-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.row-item:last-child { border-bottom: none; }
+.row-item img, .row-item .ph { width: 40px; height: 40px; border-radius: 8px; background: var(--bg-secondary); flex-shrink: 0; object-fit: cover; }
+.row-item .grow { flex: 1; min-width: 0; }
+.row-item .grow b { display: block; overflow-wrap: anywhere; }
+.row-item .grow small { color: var(--text-muted); display: block; overflow-wrap: anywhere; }
+.muted-note { color: var(--text-muted); font-size: 12px; margin-top: 6px; line-height: 1.5; }
+.swatches { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.sw { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; }
+.fmt { min-width: 30px; height: 26px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font: inherit; font-size: 12px; }
+.motd-prev { background: #2b2118 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='4' height='4' fill='%23ffffff08'/%3E%3C/svg%3E"); border: 2px solid #55402c; border-radius: 6px;
+  padding: 12px 14px; font-family: var(--font-mono); font-size: 14px; line-height: 1.5; min-height: 64px; color: #aaa; white-space: pre-wrap; overflow-wrap: anywhere; }
+.set-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.icon-prev { width: 64px; height: 64px; image-rendering: pixelated; border-radius: 6px; background: var(--bg-secondary); border: 1px solid var(--border); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+</style>
+
+<div class="pane" id="pane-plugins">
+  <div class="card"><div class="card-header"><h2><i class="fas fa-puzzle-piece" style="margin-right:8px;color:var(--accent);"></i> Plugin installer</h2>
+    <span class="text-muted" style="font-size:12px;">Powered by Modrinth</span></div>
+    <div class="card-body">
+      <div class="console-input" style="margin-top:0;"><input class="form-control" id="plQ" placeholder="Search plugins — EssentialsX, LuckPerms, WorldEdit…" onkeydown="if(event.key==='Enter')plSearch()">
+        <button class="btn btn-primary" onclick="plSearch()"><i class="fas fa-search"></i> Search</button></div>
+      <div class="muted-note" id="plVer"></div>
+      <div id="plResults" style="margin-top:8px;"></div>
+    </div></div>
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2>Installed plugins</h2></div>
+    <div class="card-body" id="plInstalled">Loading…</div></div>
+</div>
+
+<div class="pane" id="pane-version">
+  <div class="card"><div class="card-header"><h2><i class="fas fa-code-branch" style="margin-right:8px;color:var(--accent);"></i> Version changer</h2></div>
+    <div class="card-body">
+      <p id="verNow" class="muted-note" style="margin:0 0 14px;"></p>
+      <div class="two">
+        <div class="form-group"><label>Software</label>
+          <select class="form-control" id="verSw" onchange="verLoad()"><option value="paper">Paper</option><option value="purpur">Purpur</option><option value="vanilla">Vanilla</option>{% if docker %}<option value="fabric">Fabric (mods)</option><option value="forge">Forge (mods)</option><option value="neoforge">NeoForge (mods)</option><option value="quilt">Quilt (mods)</option>{% endif %}</select></div>
+        <div class="form-group"><label>Version</label><select class="form-control" id="verSel"><option>Loading…</option></select></div>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;margin:6px 0 14px;font-size:13px;"><input type="checkbox" id="verBackup" checked> Back up the world first (recommended)</label>
+      <button class="btn btn-primary" onclick="verApply()"><i class="fas fa-download"></i> Change version</button>
+      <div class="muted-note">The server stops, the jar is swapped, then it starts again. <b>Never go to an older version than your world was created or last run on</b> — Minecraft can corrupt worlds when downgrading. If the download fails the previous jar is restored automatically.</div>
+    </div></div>
+
+  {% if docker %}
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2><i class="fas fa-cubes" style="margin-right:8px;color:var(--accent);"></i> Modrinth modpack</h2></div>
+    <div class="card-body">
+      <div class="console-input" style="margin-top:0;"><input class="form-control mono" id="mpSlug" placeholder="modpack slug, e.g. cobblemon-fabric">
+        <button class="btn btn-primary" onclick="mpInstall()"><i class="fas fa-download"></i> Install</button></div>
+      <div class="muted-note">The slug is the last part of <code>modrinth.com/modpack/&lt;slug&gt;</code>. Your world is backed up first, the right loader (Fabric / Forge / Quilt) and every mod are installed automatically. Modpacks need plenty of RAM — 4 GB or more is recommended. The first start can take several minutes.</div>
+    </div></div>
+  {% endif %}
+</div>
+
+<div class="pane" id="pane-look">
+  <div class="card"><div class="card-header"><h2><i class="fas fa-wand-magic-sparkles" style="margin-right:8px;color:var(--accent);"></i> MOTD maker</h2></div>
+    <div class="card-body">
+      <div class="motd-prev" id="motdPrev"></div>
+      <div class="form-group" style="margin-top:14px;"><label>Line 1</label><input class="form-control mono" id="motd1" oninput="motdRender()" onfocus="motdFocus=this" maxlength="120" placeholder="&6&lMy Server &r&7— welcome!"></div>
+      <div class="form-group"><label>Line 2</label><input class="form-control mono" id="motd2" oninput="motdRender()" onfocus="motdFocus=this" maxlength="120" placeholder="&aSurvival &8• &bPlugins &8• &eNew players welcome"></div>
+      <div class="swatches" id="swatches"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="fmt" onclick="motdIns('&l')"><b>B</b></button><button class="fmt" onclick="motdIns('&o')"><i>I</i></button>
+        <button class="fmt" onclick="motdIns('&n')"><u>U</u></button><button class="fmt" onclick="motdIns('&m')"><s>S</s></button>
+        <button class="fmt" onclick="motdIns('&k')">Obf</button><button class="fmt" onclick="motdIns('&r')">Reset</button>
+      </div>
+      <div class="two">
+        <div class="form-group"><label>Gradient text</label><input class="form-control" id="gText" placeholder="My Server" maxlength="40"></div>
+        <div class="form-group"><label>Colors</label><div style="display:flex;gap:8px;align-items:center;">
+          <input type="color" id="gA" value="#5f6df5" style="width:48px;height:38px;"><span>→</span><input type="color" id="gB" value="#3ddc97" style="width:48px;height:38px;">
+          <button class="btn btn-secondary btn-sm" onclick="gradIns()">Insert</button></div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+        <button class="btn btn-primary" onclick="motdSave(false)"><i class="fas fa-save"></i> Save MOTD</button>
+        <button class="btn btn-secondary" onclick="motdSave(true)"><i class="fas fa-redo"></i> Save &amp; restart</button></div>
+      <div class="muted-note">Use <code>&amp;</code> codes (like <code>&amp;c</code> red, <code>&amp;l</code> bold). Hex colors <code>&amp;#RRGGBB</code> need Minecraft 1.16+ clients. The MOTD only updates after a restart.</div>
+    </div></div>
+
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2><i class="fas fa-image" style="margin-right:8px;color:var(--accent);"></i> Server icon</h2></div>
+    <div class="card-body">
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+        <div><div class="muted-note" style="margin:0 0 6px;">Current</div><img class="icon-prev" id="iconCur" alt="" onerror="this.style.visibility='hidden'" onload="this.style.visibility='visible'"></div>
+        <div><div class="muted-note" style="margin:0 0 6px;">New (64×64)</div><canvas class="icon-prev" id="iconCanvas" width="64" height="64"></canvas></div>
+        <div style="flex:1;min-width:220px;">
+          <input type="file" id="iconFile" accept="image/*" class="form-control" onchange="iconPick(this.files[0])">
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="iconApply" onclick="iconApply()" disabled><i class="fas fa-upload"></i> Apply icon</button>
+            <button class="btn btn-secondary btn-sm" onclick="iconRemove()"><i class="fas fa-trash"></i> Remove</button></div>
+        </div>
+      </div>
+      <div class="muted-note">Any image works — it's cropped to a square and resized to 64×64 PNG in your browser. Restart the server to show it in the server list.</div>
+    </div></div>
+</div>
+
+<div class="pane" id="pane-settings">
+  <div class="card"><div class="card-header"><h2><i class="fas fa-sliders" style="margin-right:8px;color:var(--accent);"></i> Server settings</h2></div>
+    <div class="card-body">
+      <div id="crackedBox" class="muted-note" style="margin:0 0 16px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;">
+        <b>Cracked (offline) players</b> — <span id="crackedState">checking…</span>
+        <div style="margin-top:6px;">Premium-only servers kick launchers without a paid Minecraft account. Turn this on to let cracked launchers (TLauncher, SKLauncher…) join. Anyone can then join with any name, so use a whitelist or an AuthMe-style login plugin if you need protection. Rebuilds the server (about a minute).</div>
+        <button class="btn btn-secondary btn-sm" id="crackedBtn" style="margin-top:8px;" onclick="crackedToggle()" disabled>…</button>
+      </div>
+      <div class="set-grid" id="setGrid">Loading…</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;">
+        <button class="btn btn-primary" onclick="setSave(false)"><i class="fas fa-save"></i> Save</button>
+        <button class="btn btn-secondary" onclick="setSave(true)"><i class="fas fa-redo"></i> Save &amp; restart</button></div>
+      <div class="muted-note">Edits <code>server.properties</code>. Port and remote-access settings are locked so the server stays reachable.</div>
+    </div></div>
+</div>
+
+<div class="pane" id="pane-backups">
+  <div class="card"><div class="card-header"><h2><i class="fas fa-box-archive" style="margin-right:8px;color:var(--accent);"></i> World backups</h2>
+    <button class="btn btn-primary btn-sm" onclick="bkCreate()"><i class="fas fa-plus"></i> Create backup</button></div>
+    <div class="card-body"><div class="muted-note" id="bkFree" style="margin:0 0 8px;"></div><div id="bkList">Loading…</div>
+      <div class="muted-note">Backups include the worlds, plugins and server.properties and are stored inside this machine. Restoring replaces the current world and restarts the server.</div></div></div>
+  {% if docker %}
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2><i class="fas fa-file-import" style="margin-right:8px;color:var(--accent);"></i> Import a world</h2></div>
+    <div class="card-body">
+      <input type="file" id="worldZip" accept=".zip" class="form-control">
+      <button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="worldImport()"><i class="fas fa-upload"></i> Upload &amp; replace world</button>
+      <div class="muted-note">Zip your world folder (the one that contains <code>level.dat</code>) and upload it. The current world is backed up first, then replaced, and the server restarts.</div>
+    </div></div>
+  {% endif %}
+</div>
+
+<div class="pane" id="pane-players">
+  <div class="card"><div class="card-header"><h2><i class="fas fa-users" style="margin-right:8px;color:var(--accent);"></i> Players</h2>
+    <button class="btn btn-secondary btn-sm" onclick="plyLoad()"><i class="fas fa-rotate"></i> Refresh</button></div>
+    <div class="card-body">
+      <div class="console-input" style="margin-top:0;flex-wrap:wrap;">
+        <input class="form-control" id="plyName" placeholder="Minecraft username" maxlength="16" style="min-width:160px;">
+        <button class="btn btn-secondary" onclick="plyAct('whitelist-add')"><i class="fas fa-list-check"></i> Whitelist</button>
+        <button class="btn btn-secondary" onclick="plyAct('op')"><i class="fas fa-crown"></i> OP</button>
+        <button class="btn btn-danger" onclick="plyAct('ban')"><i class="fas fa-ban"></i> Ban</button>
+      </div>
+      <div class="muted-note">These send commands to the running server (it must be online with console enabled). Turn the whitelist on under Settings.</div>
+      <div id="plyOnline" style="margin-top:14px;"></div>
+    </div></div>
+  <div class="two" style="margin-top:18px;">
+    <div class="card"><div class="card-header"><h2>Whitelist</h2></div><div class="card-body" id="plyWl"></div></div>
+    <div class="card"><div class="card-header"><h2>Operators</h2></div><div class="card-body" id="plyOps"></div></div>
+  </div>
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2>Banned</h2></div><div class="card-body" id="plyBans"></div></div>
+</div>
+
+<div class="pane" id="pane-schedule">
+  <div class="card"><div class="card-header"><h2><i class="fas fa-clock" style="margin-right:8px;color:var(--accent);"></i> Automation</h2></div>
+    <div class="card-body">
+      <div class="two">
+        <div class="form-group"><label>Automatic restart</label>
+          <select class="form-control" id="schRestart"><option value="0">Off</option><option value="3">Every 3 hours</option><option value="6">Every 6 hours</option><option value="12">Every 12 hours</option><option value="24">Daily at 04:00</option></select>
+          <div class="form-hint">Players get a 60-second warning in chat and the world is saved first.</div></div>
+        <div class="form-group"><label>Automatic backup</label>
+          <select class="form-control" id="schBackup"></select>
+          <div class="form-hint">Runs at :30 of the chosen hour. Times use the machine's clock (UTC).</div></div>
+      </div>
+      <div class="form-group" style="max-width:240px;"><label>Keep last N automatic backups</label><input class="form-control" type="number" id="schKeep" min="1" max="30" value="5"></div>
+      <button class="btn btn-primary" onclick="schSave()"><i class="fas fa-save"></i> Save schedule</button>
+      <div class="muted-note">Automatic backups are named <code>auto-…</code> and are the only ones cleaned up. Manual backups are never deleted for you.</div>
+    </div></div>
+  {% if docker %}
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2><i class="fas fa-bell" style="margin-right:8px;color:var(--accent);"></i> Crash alerts</h2><span id="alState" class="text-muted" style="font-size:12px;"></span></div>
+    <div class="card-body">
+      <div class="console-input" style="margin-top:0;"><input class="form-control mono" id="alHook" placeholder="https://discord.com/api/webhooks/…" autocomplete="off">
+        <button class="btn btn-primary" onclick="alSave()">Save</button><button class="btn btn-secondary" onclick="alTest()">Send test</button></div>
+      <div class="muted-note">Get a Discord message with the last log lines when this server crashes, runs out of memory, or is stopped for exceeding its disk. Create a webhook in Discord: channel settings → Integrations → Webhooks. Leave empty and Save to turn alerts off.</div>
+    </div></div>
+  {% endif %}
+</div>
+
+{% if docker %}
+<div class="pane" id="pane-connection">
+  <div class="card"><div class="card-header"><h2><i class="fas fa-plug" style="margin-right:8px;color:var(--accent);"></i> How players connect</h2></div>
+    <div class="card-body">
+      <div class="side-label">Current address</div>
+      <button type="button" class="addr-box" onclick="connCopy()" title="Click to copy"><span class="mono" id="connAddr">…</span><i class="fas fa-copy" id="connIcon"></i></button>
+      <div class="side-note" id="connNote"></div>
+    </div></div>
+
+  <div class="card" style="margin-top:18px;" id="subCard"><div class="card-header"><h2><i class="fas fa-globe" style="margin-right:8px;"></i> Your own server address</h2><span id="subState" class="text-muted" style="font-size:12px;"></span></div>
+    <div class="card-body">
+      <div class="muted-note" style="margin:0 0 12px;">Pick a name and players join with just <b class="mono" id="subExample">name.domain.com</b> — no port to remember.</div>
+      <div id="subForm" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input class="form-control mono" id="subLabel" placeholder="myserver" maxlength="30" style="max-width:200px;"><span class="mono" id="subBase"></span>
+        <button class="btn btn-primary" onclick="connSubSet()">Save</button>
+        <button class="btn btn-secondary" id="subChk" style="display:none;" onclick="connSubCheck()">Test</button>
+        <button class="btn btn-secondary" id="subRm" style="display:none;" onclick="connSubRemove()">Remove</button></div>
+      <div class="muted-note" id="subPage" style="display:none;margin:10px 0 0;">Public status page: <a id="subPageLink" href="#" target="_blank" rel="noopener" class="mono"></a></div>
+      <div class="muted-note" id="subOff" style="display:none;margin:0;">The admin has not enabled subdomains yet.</div>
+    </div></div>
+
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2>Direct IP</h2></div>
+    <div class="card-body"><div class="mono" id="connDirect" style="margin-bottom:6px;">…</div>
+      <div class="muted-note">Players use this host's IP and your forwarded port. Needs the port to be reachable from the internet (open it in your firewall/router if the host is behind one).</div></div></div>
+
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2><i class="fab fa-xbox" style="margin-right:8px;"></i> Bedrock cross-play</h2><span id="bdState" class="text-muted" style="font-size:12px;"></span></div>
+    <div class="card-body">
+      <div class="muted-note" style="margin:0 0 12px;">Lets Bedrock players (phones, consoles, Windows 10/11) join this Java server using Geyser + Floodgate (Paper / Purpur only). Uses UDP, so open the UDP port in your firewall.</div>
+      <div id="bdAddrRow" style="display:none;margin-bottom:10px;"><span class="muted-note" style="margin:0;">Bedrock address:</span> <span class="mono" id="bdAddr"></span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="bdBtn" onclick="bdToggle()">Enable</button>
+        <button class="btn btn-secondary" id="bdAuth" style="display:none;" onclick="bdAuth()">Let Bedrock players join without a Java account</button></div>
+    </div></div>
+
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2>Custom domain</h2></div>
+    <div class="card-body">
+      <div class="muted-note" style="margin:0 0 10px;">Want <code>play.yourdomain.com</code> instead of an IP:port? Add these DNS records at your domain provider:</div>
+      <div class="mono" id="srvRecords" style="white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12.5px;">…</div>
+      <div class="muted-note">The SRV record's target must be a hostname (hence the A record), not a raw IP. After DNS updates, players can join with just <code>play.yourdomain.com</code>.</div>
+    </div></div>
+
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2><i class="fas fa-stethoscope"></i> Can't connect? Check</h2></div>
+    <div class="card-body"><button class="btn btn-primary" onclick="connDiag()"><i class="fas fa-search"></i> Run checks</button>
+      <button class="btn btn-secondary" id="viaBtn" onclick="connVia()" style="margin-left:8px;"><i class="fas fa-layer-group"></i> Allow any client version</button>
+      <div id="diagOut" style="margin-top:14px;"></div></div></div>
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2>Minekube Connect</h2><span id="mkState" class="text-muted" style="font-size:12px;"></span></div>
+    <div class="card-body">
+      <div class="muted-note" style="margin:0 0 12px;">Gives you a free <code>name.play.minekube.net</code> address with no port forwarding. Installs the Connect plugin (Paper / Purpur only) and restarts the server.</div>
+      <button class="btn btn-primary" id="mkBtn" onclick="connMinekube()">Enable</button>
+    </div></div>
+
+  <div class="card" style="margin-top:18px;"><div class="card-header"><h2>playit.gg tunnel</h2><span id="plState" class="text-muted" style="font-size:12px;"></span></div>
+    <div class="card-body">
+      <div class="muted-note" style="margin:0 0 12px;">Free public address with no port forwarding. In your playit.gg account create an <b>agent</b> and copy its <b>secret key</b>, paste it below, then add a <b>Minecraft Java tunnel</b> pointing to <code>127.0.0.1</code> port <code>25565</code> in the playit dashboard.</div>
+      <div id="plSetKey">
+        <button class="btn btn-primary" onclick="connPlayitStart()" style="margin-bottom:12px;"><i class="fas fa-link"></i> Start playit — no key needed</button>
+        <div class="form-hint" style="margin-bottom:12px;">We start the agent and show you a link. Open it once, sign in to playit.gg and click approve. Or paste a secret key below if you already have one.</div>
+        <div class="console-input" style="margin-top:0;"><input class="form-control mono" id="plKey" type="password" placeholder="playit secret key" autocomplete="off">
+          <button class="btn btn-primary" onclick="connPlayitSet()">Save &amp; start</button></div>
+      </div>
+      <div id="plManage" style="display:none;">
+        <div id="plClaim" style="display:none;margin-bottom:12px;" class="muted-note"><b>Almost done:</b> open <a id="plClaimLink" href="#" target="_blank" rel="noopener noreferrer"></a>, approve the agent, then create a <b>Minecraft Java tunnel</b> to <code>127.0.0.1</code> port <code>25565</code> in the playit dashboard.</div>
+        <div class="form-group"><label>Your playit address (optional — shown in the sidebar)</label>
+          <div class="console-input" style="margin-top:0;"><input class="form-control mono" id="plAddr" placeholder="name.joinmc.link or name.ply.gg:12345">
+            <button class="btn btn-secondary" onclick="connPlayitAddr()">Save</button></div>
+          <div class="form-hint">We try to find it from the agent's log automatically; use this if it doesn't show up.</div></div>
+        <button class="btn btn-danger btn-sm" onclick="connPlayitRemove()"><i class="fas fa-trash"></i> Remove playit</button>
+      </div>
+    </div></div>
+</div>
+{% endif %}

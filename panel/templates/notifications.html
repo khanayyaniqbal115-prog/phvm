@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Notifications — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span> <span class="current">Notifications</span>
+{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <div>
+        <h1><i class="fas fa-bell"></i> Notifications</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+        <div class="btn-group" id="notifFilter">
+            <button type="button" class="btn btn-sm btn-secondary active" data-filter="all" onclick="filterNotifs('all', this)">All</button>
+            <button type="button" class="btn btn-sm btn-secondary" data-filter="unread" onclick="filterNotifs('unread', this)">Unread</button>
+        </div>
+        <a href="{{ url_for('read_all_notifications') }}" class="btn btn-secondary btn-sm">Mark all read</a>
+    </div>
+</div>
+<div class="card">
+    <div class="card-body">
+        {% if notifications %}
+        <table class="data-table" id="notifTable">
+            <thead>
+                <tr><th>Title</th><th>Message</th><th>Type</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+                {% for n in notifications %}
+                <tr data-read="{{ 'true' if n.is_read else 'false' }}" style="{% if not n.is_read %}background:rgba(230,230,234,0.06);{% endif %}">
+                    <td style="font-weight:600;">{% if not n.is_read %}<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-right:8px;"></span>{% endif %}{{ n.title }}</td>
+                    <td>{{ n.message }}</td>
+                    <td><span class="badge badge-{{ n.type if n.type in ['success','danger','warning','info'] else 'secondary' }}">{{ n.type }}</span></td>
+                    <td class="text-muted">{{ n.created_at|datetime }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="padding:40px;text-align:center;color:var(--text-muted);">No notifications.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function filterNotifs(mode, btn) {
+    document.querySelectorAll('#notifFilter .btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('#notifTable tbody tr').forEach(tr => {
+        tr.style.display = (mode === 'all' || tr.dataset.read === 'false') ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

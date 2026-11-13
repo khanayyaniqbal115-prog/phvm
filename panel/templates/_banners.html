@@ -1,0 +1,10 @@
+{% for b in site_banners() %}
+<div class="site-banner" data-end="{{ b.end }}" data-start="{{ 1 if b.start else 0 }}" style="margin-bottom:16px;padding:12px 16px;border-radius:12px;border:1px solid var(--border);background:var(--card-bg, #141418);display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;">
+  <span>{{ b.text }}</span><b class="bn-left" style="font-variant-numeric:tabular-nums;"></b></div>
+{% endfor %}
+<script>(function(){var els=document.querySelectorAll('.site-banner');if(!els.length)return;
+function f(){els.forEach(function(e){var s=+e.dataset.end-Math.floor(Date.now()/1000),o=e.querySelector('.bn-left');if(s<=0){e.remove();return}
+var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=s%60;
+o.textContent=(e.dataset.start==='1'?'starts in ':'ends in ')+(d?d+'d ':'')+h+'h '+m+'m '+x+'s'})}
+f();setInterval(f,1000)})();</script>
+{% for e in expiring_soon() %}<div style="margin-bottom:12px;padding:10px 16px;border-radius:12px;border:1px solid var(--border);display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;"><span>⏳ <b>{{ e.name }}</b> expires in {{ e.days }} day{{ 's' if e.days != 1 }}.</span><a class="btn btn-secondary btn-sm" href="{{ url_for('web_plans_page') }}{% if e.web %}?renew={{ e.vm_id }}{% if e.plan %}&plan={{ e.plan }}{% endif %}{% endif %}">Renew now</a></div>{% endfor %}

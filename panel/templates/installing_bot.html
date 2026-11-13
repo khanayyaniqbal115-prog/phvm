@@ -1,0 +1,17 @@
+{% extends "installing_server_base.html" %}
+{% block kind_name %}Bot Server{% endblock %}
+{% block theme_css %}
+<style>
+    .srv-card { border-top: 4px solid #7c5cff; }
+    .srv-bar > div { background: linear-gradient(90deg,#7c5cff,#5865f2); }
+    .bot-term { margin-top:18px; background:#0d1117; color:#9fe870; border:1px solid var(--border); border-radius:10px; padding:12px 14px; font:12.5px/1.6 ui-monospace,Menlo,Consolas,monospace; }
+    .bot-term .dim { color:#6e7681; }
+</style>
+{% endblock %}
+{% block extra_body %}
+<div class="bot-term">
+    <div><span class="dim">$</span> setup --runtime {{ runtime }}</div>
+    <div class="dim">→ preparing environment…</div>
+    <div class="dim">→ when ready: upload bot → set startup → Start</div>
+</div>
+{% endblock %}

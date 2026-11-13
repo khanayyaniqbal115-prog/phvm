@@ -1,0 +1,15 @@
+<div class="card" id="devCard" style="margin-top:20px;"><div class="card-header"><h2 style="margin:0;"><i class="fas fa-laptop"></i> Signed-in devices</h2></div><div class="card-body">
+  <p class="form-hint" style="margin-top:0;">You get a notification whenever a new device signs in. Remove devices you no longer use — if you don't recognise one, change your password.</p>
+  <div id="devList" style="display:grid;gap:8px;font-size:13px;">Loading…</div>
+</div></div>
+<script>
+(function(){var l=document.getElementById('devList'),tok={{ csrf_token|tojson }};
+function load(){fetch('/devices.json').then(function(r){return r.json()}).then(function(j){l.innerHTML='';
+ if(!j.devices.length){l.textContent='No devices recorded yet.';return}
+ j.devices.forEach(function(d){var r=document.createElement('div');r.style.cssText='display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:8px 12px;';
+  var s=document.createElement('span');s.textContent=d.label+' · '+d.ip+' · last seen '+new Date(d.last_seen*1000).toLocaleString();
+  var b=document.createElement('button');b.className='btn btn-secondary btn-sm';b.textContent='Remove';
+  b.onclick=function(){fetch('/devices/'+d.id+'/remove',{method:'POST',headers:{'X-CSRF-Token':tok}}).then(load)};
+  r.appendChild(s);r.appendChild(b);l.appendChild(r)})})}
+load()})();
+</script>

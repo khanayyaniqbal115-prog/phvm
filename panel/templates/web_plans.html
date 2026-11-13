@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Web Hosting Plans — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span> <span class="current">Web plans</span>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-globe"></i> Web Hosting Plans</h1>
+    <p>WordPress hosting with free SSL, your own domain and one-click backups.</p>
+</div>
+{% if trial_on and docker_ok %}<div class="card" style="margin-bottom:16px;"><div class="card-body" style="display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;"><span><b>Free {{ trial_hours }}-hour trial</b> — try hosting before you pay (one per person).</span><button class="btn btn-primary" onclick="startTrial()">Start free trial</button></div></div>{% endif %}
+{% if not docker_ok %}<div class="card"><div class="card-body">Web hosting is not available on this server right now.</div></div>{% endif %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;">
+{% for p in plans %}
+<div class="card"><div class="card-body">
+    <h3 style="margin:0 0 4px;">{% if p.engine in APP_META %}<i class="fas {{ APP_META[p.engine].icon }}"></i> {% endif %}{{ p.name }}</h3>
+    <div style="font-size:22px;font-weight:700;margin:6px 0;">{{ p.price_text or (('%g'|format(p.price)) ~ ' ' ~ cur if stripe else '%g'|format(p.price)) }}<span class="text-muted" style="font-size:12px;font-weight:500;"> / {{ p.days }} days</span></div>
+    <ul style="padding-left:18px;margin:10px 0 14px;line-height:1.7;">
+        <li>{{ p.ram_mb }} MB RAM · {{ p.cpu_cores }} CPU</li>
+        <li>{{ p.storage_gb }} GB storage</li>
+        <li>Up to {{ p.max_domains }} domains</li>
+        <li>{% if p.engine in APP_META %}Free SSL · own address · backups{% else %}Free SSL · backups · WordPress tools{% endif %}</li>
+    </ul>
+    <button class="btn btn-primary" style="width:100%;" {% if not docker_ok %}disabled{% endif %} onclick="openCheckout({{ p.id }}, 'new')">Get this plan</button>
+    {% if mine %}<div style="display:flex;gap:8px;margin-top:8px;"><button class="btn btn-secondary btn-sm" style="flex:1;" onclick="openCheckout({{ p.id }}, 'renew')">Renew a site</button><button class="btn btn-secondary btn-sm" style="flex:1;" onclick="openCheckout({{ p.id }}, 'upgrade')">Upgrade a site</button></div>{% endif %}
+</div></div>
+{% else %}
+<div class="card"><div class="card-body text-muted">No plans are available yet.</div></div>
+{% endfor %}
+</div>
+<div id="ck" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);align-items:center;justify-content:center;padding:16px;">
+ <div class="card" style="width:100%;max-width:460px;max-height:92vh;overflow:auto;background:#141418;border:1px solid #2c2c33;backdrop-filter:none;"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;" id="ckTitle">Checkout</h2><button class="btn btn-secondary btn-sm" type="button" onclick="closeCk()">Close</button></div>
+ <div class="card-body">
+  <div class="form-group"><label>Plan</label><select id="ckPlan" class="form-control" onchange="quote()">{% for p in plans %}<option value="{{ p.id }}">{{ p.name }} — {{ p.ram_mb }} MB · {{ p.storage_gb }} GB · {{ p.days }} days</option>{% endfor %}</select></div>
+  <div class="form-group"><label>What do you want to do?</label><select id="ckKind" class="form-control" onchange="kindChanged()"><option value="new">Create a new site / server</option>{% if mine %}<option value="renew">Renew one of my sites</option><option value="upgrade">Upgrade one of my sites</option>{% endif %}</select></div>
+  <div class="form-group" id="ckNameBox"><label>Name</label><input id="ckName" class="form-control" maxlength="60" placeholder="My Shop"></div>
+  <div class="form-group" id="ckVmBox" style="display:none;"><label>Which site?</label><select id="ckVm" class="form-control" onchange="quote()">{% for m in mine %}<option value="{{ m.vm_id }}">{{ m.name }}</option>{% endfor %}</select></div>
+  <div class="form-group"><label>Coupon (optional)</label><div style="display:flex;gap:8px;"><input id="ckCoupon" class="form-control" maxlength="32" placeholder="CODE" style="text-transform:uppercase;"><button class="btn btn-secondary" type="button" onclick="quote()">Apply</button></div></div>
+  <div id="ckSum" style="border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:6px 0 12px;font-size:14px;line-height:1.7;">…</div>
+  <div id="ckErr" style="color:var(--danger,#e57373);font-size:13px;margin-bottom:8px;display:none;"></div>
+  <div style="display:grid;gap:8px;">
+   <button class="btn btn-primary" id="ckWallet" type="button" onclick="pay('wallet')">Pay with Volts</button>
+   <button class="btn btn-secondary" id="ckCard" type="button" onclick="pay('card')" style="display:none;">Pay by card</button>
+   <button class="btn btn-secondary" id="ckManual" type="button" onclick="pay('manual')">Pay manually (admin approves)</button>
+   <a class="btn btn-secondary btn-sm" id="ckTop" href="/wallet" style="display:none;">Add Volts to my wallet</a>
+  </div>
+ </div></div></div>
+<script>
+const CSRF = {{ csrf_token|tojson }}, CUR = {{ cur|tojson }};
+const H = {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF};
+const $ = id => document.getElementById(id);
+let last = null;
+document.body.appendChild($('ck'));
+function body() {
+  const k = $('ckKind').value, b = {coupon: $('ckCoupon').value.trim()};
+  if (k === 'renew') b.renew_vm = $('ckVm').value; else if (k === 'upgrade') b.upgrade_vm = $('ckVm').value; else b.name = $('ckName').value.trim();
+  return b;
+}
+function openCheckout(pid, kind) {
+  $('ckPlan').value = pid; $('ckKind').value = kind; $('ck').style.display = 'flex'; kindChanged();
+}
+function closeCk() { $('ck').style.display = 'none'; }
+function kindChanged() {
+  const k = $('ckKind').value;
+  $('ckNameBox').style.display = k === 'new' ? '' : 'none'; $('ckVmBox').style.display = k === 'new' ? 'none' : '';
+  $('ckTitle').textContent = k === 'renew' ? 'Renew a site' : k === 'upgrade' ? 'Upgrade a site' : 'New site';
+  quote();
+}
+async function quote() {
+  $('ckErr').style.display = 'none'; $('ckSum').textContent = '…'; last = null;
+  let d; try { d = await (await fetch('/web-plans/' + $('ckPlan').value + '/quote', {method: 'POST', headers: H, body: JSON.stringify(body())})).json(); } catch (e) { d = {success: false, message: 'Could not reach the panel.'}; }
+  if (!d.success) { $('ckSum').textContent = '—'; $('ckErr').textContent = d.message || 'Not possible.'; $('ckErr').style.display = ''; ['ckWallet', 'ckCard', 'ckManual'].forEach(i => $(i).disabled = true); return; }
+  last = d;
+  const rows = [];
+  rows.push('Price: <b>' + (d.free ? 'Free' : (d.price_text && d.price === d.base ? d.price_text : d.price + ' ' + CUR)) + '</b>' + (d.price < d.base ? ' <s class="text-muted">' + d.base + '</s>' : ''));
+  if (!d.free) rows.push('In Volts: <b>⚡' + d.volts + '</b> · your wallet: ⚡' + d.balance);
+  if (d.note) rows.push('<span class="text-muted">' + d.note + '</span>');
+  if (d.coupon) rows.push('✅ ' + d.coupon);
+  $('ckSum').innerHTML = rows.join('<br>');
+  $('ckWallet').disabled = !d.can_wallet; $('ckWallet').textContent = d.free ? 'Get it free' : 'Pay ⚡' + d.volts + ' with Volts';
+  $('ckCard').style.display = d.card && !d.free ? '' : 'none'; $('ckCard').disabled = false;
+  $('ckManual').style.display = d.free ? 'none' : ''; $('ckManual').disabled = false;
+  $('ckTop').style.display = !d.can_wallet && !d.free ? '' : 'none';
+}
+async function pay(how) {
+  if (!last) return;
+  const b = body(); if ($('ckKind').value === 'new' && !b.name) { alert('Give your site a name.'); return; }
+  if (how === 'wallet') b.pay = 'wallet';
+  document.querySelectorAll('#ck button').forEach(x => x.disabled = true);
+  const d = await (await fetch('/web-plans/' + $('ckPlan').value + '/buy', {method: 'POST', headers: H, body: JSON.stringify(b)})).json();
+  if (d.success && d.checkout_url && how === 'card') { location.href = d.checkout_url; return; }
+  alert(d.message || (d.success ? 'Done' : 'Failed'));
+  if (d.success && (d.paid || /Coupon applied/.test(d.message || ''))) { location.href = '/my-vms'; return; }
+  quote();
+}
+async function startTrial() {
+  const n = prompt('Name for your trial website:', 'My trial site'); if (!n) return;
+  const d = await (await fetch('/trial', {method: 'POST', headers: H, body: JSON.stringify({name: n})})).json();
+  alert(d.message || 'Done'); if (d.success) location.href = '/my-vms';
+}
+try {
+  const q = new URLSearchParams(location.search);
+  if (q.get('paid') === '1') alert('Payment received. Your website is being set up — find it in My Virtual Machines in a minute or two.');
+  if (q.get('renew') || q.get('upgrade')) { const k = q.get('renew') ? 'renew' : 'upgrade'; if (q.get('plan')) $('ckPlan').value = q.get('plan'); $('ckKind').value = k; $('ckVm').value = q.get(k); $('ck').style.display = 'flex'; kindChanged(); }
+  else if (q.get('plan')) openCheckout(q.get('plan'), 'new');
+  if (q.get('paid')) history.replaceState(null, '', location.pathname);
+} catch (e) {}
+</script>
+{% endblock %}

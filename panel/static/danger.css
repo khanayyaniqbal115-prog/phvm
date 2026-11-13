@@ -1,0 +1,99 @@
+/* PHvm "Danger" style (v21.56). Active when <html class="danger"> (default; Profile menu → Style switches to Soft).
+   Sharp corners, black glass, neon edge glow, corner brackets, uppercase mono labels, scan-line. Everything follows --v-accent. */
+html.danger { --radius: 4px; --d-glow: color-mix(in srgb, var(--v-accent) 55%, transparent); --d-line: color-mix(in srgb, var(--v-accent) 28%, #1a1a22); }
+html.danger body:not(.theme-light) {
+  --bg-primary: #050508; --bg-secondary: #0a0a10; --bg-card: #0b0b12; --bg-sidebar: #07070b; --bg-hover: #14141d;
+  --border: #1d1d28; --hg-glass: rgba(9,9,14,.86); --text-secondary: #a9a9bd; --text-muted: #6b6b80;
+}
+html.danger body::before {
+  background:
+    radial-gradient(50% 40% at 8% 0%, color-mix(in srgb, var(--v-accent) 24%, transparent), transparent 70%),
+    radial-gradient(40% 40% at 100% 100%, color-mix(in srgb, var(--v-accent-2) 16%, transparent), transparent 70%) !important;
+}
+/* faint scan-lines + moving highlight line under the top bar */
+html.danger body::after { opacity: 1; background: repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 3px); pointer-events: none; }
+html.danger .topbar { border-bottom: 1px solid var(--d-line) !important; position: relative; }
+html.danger .topbar::after { content: ''; position: absolute; left: 0; bottom: -1px; height: 1px; width: 38%; background: linear-gradient(90deg, transparent, var(--v-accent), transparent); animation: dgScan 5s linear infinite; }
+@keyframes dgScan { from { transform: translateX(-100%); } to { transform: translateX(270%); } }
+
+/* type */
+html.danger h1, html.danger h2, html.danger h3 { text-transform: uppercase; letter-spacing: .04em; }
+html.danger .page-header h1 { font-size: 24px; background: none; -webkit-text-fill-color: var(--text-primary); color: var(--text-primary); text-shadow: 0 0 22px var(--d-glow); }
+html.danger .page-header h1 i { -webkit-text-fill-color: var(--v-accent); text-shadow: 0 0 14px var(--d-glow); }
+html.danger .page-header::after { width: 84px; height: 2px; border-radius: 0; box-shadow: 0 0 14px var(--v-accent); }
+html.danger .card-header h2 { font-size: 12.5px; letter-spacing: .14em; }
+html.danger .stat-card .stat-label, html.danger .nav-section-title, html.danger .data-table thead th { font-family: 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .14em; }
+html.danger .stat-card .stat-value { font-family: 'JetBrains Mono', ui-monospace, monospace; text-shadow: 0 0 18px var(--d-glow); }
+
+/* cards: hard edges, glowing hairline, corner brackets */
+html.danger .card, html.danger .stat-card, html.danger .action-card, html.danger .plan-card, html.danger .product-card {
+  border-radius: 4px !important; position: relative;
+  background: linear-gradient(180deg, rgba(14,14,22,.92), rgba(7,7,11,.94)) !important;
+  border: 1px solid var(--d-line) !important;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 18px 40px -26px #000, inset 0 1px 0 rgba(255,255,255,.04) !important;
+}
+html.danger body.theme-light .card, html.danger body.theme-light .stat-card, html.danger body.theme-light .action-card { background: #fff !important; }
+html.danger .card::after, html.danger .stat-card::after, html.danger .action-card::after, html.danger .plan-card::after, html.danger .product-card::after {
+  content: ''; position: absolute; inset: -1px; pointer-events: none; z-index: 2;
+  background:
+    linear-gradient(var(--v-accent), var(--v-accent)) top left / 14px 2px no-repeat,
+    linear-gradient(var(--v-accent), var(--v-accent)) top left / 2px 14px no-repeat,
+    linear-gradient(var(--v-accent), var(--v-accent)) bottom right / 14px 2px no-repeat,
+    linear-gradient(var(--v-accent), var(--v-accent)) bottom right / 2px 14px no-repeat;
+  filter: drop-shadow(0 0 4px var(--v-accent)); opacity: .85; transition: opacity .25s, inset .25s;
+}
+html.danger .card:hover::after, html.danger .stat-card:hover::after, html.danger .action-card:hover::after, html.danger .plan-card:hover::after, html.danger .product-card:hover::after { opacity: 1; inset: -3px; }
+html.danger .card:hover, html.danger .stat-card:hover, html.danger .action-card:hover, html.danger .plan-card:hover, html.danger .product-card:hover {
+  border-color: var(--v-accent) !important; box-shadow: 0 0 22px -6px var(--d-glow), 0 18px 40px -26px #000 !important;
+}
+html.danger .card-header { background: linear-gradient(90deg, color-mix(in srgb, var(--v-accent) 10%, transparent), transparent 70%); border-bottom: 1px solid var(--d-line); }
+html.danger .stat-card .stat-icon, html.danger .action-card .action-icon { border-radius: 2px; border: 1px solid var(--d-line); background: color-mix(in srgb, var(--v-accent) 9%, transparent) !important; box-shadow: 0 0 14px -4px var(--d-glow); }
+html.danger .stat-card::before { height: 2px !important; box-shadow: 0 0 12px var(--v-accent); }
+
+/* sidebar */
+html.danger .sidebar { background: linear-gradient(180deg, #08080d, #040407) !important; border-right: 1px solid var(--d-line) !important; }
+html.danger body.theme-light .sidebar { background: var(--bg-sidebar) !important; }
+html.danger .nav-item { border-radius: 2px; text-transform: uppercase; font-size: 12.5px; letter-spacing: .08em; }
+html.danger .nav-item:hover { background: linear-gradient(90deg, var(--accent-dim), transparent); }
+html.danger .nav-item.active { border-radius: 2px; background: linear-gradient(90deg, color-mix(in srgb, var(--v-accent) 24%, transparent), transparent 95%) !important; box-shadow: inset 0 0 0 1px var(--d-line) !important; text-shadow: 0 0 12px var(--d-glow); }
+html.danger .nav-item.active::before { width: 3px; border-radius: 0; box-shadow: 0 0 14px var(--v-accent); }
+html.danger .sidebar-brand .logo-icon, html.danger .sidebar-brand img { border-radius: 4px; box-shadow: 0 0 22px -4px var(--d-glow); }
+html.danger .sidebar-brand:hover .brand-text h1 { animation: dgGlitch .35s steps(2) 1; }
+@keyframes dgGlitch { 0% { text-shadow: 2px 0 var(--v-accent), -2px 0 #00e5ff; transform: translateX(1px); } 50% { text-shadow: -2px 0 var(--v-accent), 2px 0 #00e5ff; transform: translateX(-1px); } 100% { text-shadow: none; transform: none; } }
+
+/* buttons, inputs, badges */
+html.danger .btn { border-radius: 2px; text-transform: uppercase; letter-spacing: .09em; font-size: 12px; font-weight: 700; }
+html.danger .btn-primary, html.danger .login-card .btn {
+  background: linear-gradient(135deg, var(--v-accent), color-mix(in srgb, var(--v-accent) var(--d-mix, 55%), #000)) !important; border: 1px solid var(--v-accent);
+  box-shadow: 0 0 18px -4px var(--d-glow), inset 0 1px 0 rgba(255,255,255,.25); color: var(--d-on, #fff) !important; text-shadow: var(--d-ts, 0 1px 8px rgba(0,0,0,.6));
+}
+html.danger .btn-primary:hover { box-shadow: 0 0 28px 0 var(--d-glow), inset 0 1px 0 rgba(255,255,255,.3); filter: brightness(1.15); }
+html.danger .btn-secondary { background: rgba(255,255,255,.03); border: 1px solid var(--d-line); }
+html.danger .btn-secondary:hover { border-color: var(--v-accent); box-shadow: 0 0 14px -4px var(--d-glow); background: var(--accent-dim); }
+html.danger .btn-danger { background: rgba(255,40,70,.12); border: 1px solid rgba(255,40,70,.5); color: #ff6b81; }
+html.danger .btn-danger:hover { box-shadow: 0 0 18px -4px rgba(255,40,70,.8); }
+html.danger .form-control { border-radius: 2px; border: 1px solid var(--d-line); background: rgba(0,0,0,.45); font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13px; }
+html.danger .form-control:focus { box-shadow: 0 0 0 1px var(--v-accent), 0 0 18px -4px var(--d-glow) !important; }
+html.danger .badge { border-radius: 2px; text-transform: uppercase; letter-spacing: .1em; font-size: 10.5px; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+html.danger .data-table thead th { font-size: 10.5px; border-bottom: 1px solid var(--v-accent); background: rgba(0,0,0,.4); }
+html.danger .data-table tbody tr:hover { background: linear-gradient(90deg, var(--accent-dim), transparent); box-shadow: inset 2px 0 var(--v-accent); }
+html.danger .dd-menu, html.danger .flash { border-radius: 4px; border: 1px solid var(--d-line); box-shadow: 0 0 30px -8px var(--d-glow), 0 24px 50px -20px #000; }
+html.danger .flash { border-left: 3px solid var(--v-accent); }
+html.danger .live-dot, html.danger .status-pill .dot { box-shadow: 0 0 10px currentColor; }
+html.danger .acc-dot { border-radius: 2px; }
+html.danger .tab.active { text-shadow: 0 0 12px var(--d-glow); border-bottom: 2px solid var(--v-accent); }
+html.danger ::selection { background: var(--v-accent); color: #000; }
+@media (max-width: 640px) { html.danger body::after, html.danger .topbar::after { display: none; } html.danger .card::after, html.danger .stat-card::after { opacity: .6; } }
+@media (prefers-reduced-motion: reduce) { html.danger .topbar::after { animation: none; } }
+html.no-anim.danger .topbar::after { display: none; }
+
+/* v21.60: catch the page-local rounded containers so every page matches */
+html.danger .srv-card, html.danger .modal-content, html.danger .modal-box, html.danger .box-card, html.danger .tile, html.danger .panel-box { border-radius: 4px !important; border-color: var(--d-line) !important; background: linear-gradient(180deg, rgba(14,14,22,.92), rgba(7,7,11,.94)) !important; box-shadow: 0 0 36px -14px var(--d-glow), 0 24px 50px -28px #000 !important; }
+html.danger .srv-badge, html.danger .vm-avatar, html.danger .stat-badge { border-radius: 2px !important; }
+html.danger .stat-badge { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+html.danger .nav-item .stat-badge { order: 2; }
+html.danger img.avatar, html.danger .avatar { border-radius: 2px; }
+html.danger hr, html.danger .dd-sep { border-color: var(--d-line); background: var(--d-line); }
+
+/* v21.78: readable text on the (light) platinum accent buttons */
+html.danger .hero-card .btn, html.danger .btn-primary, html.danger .btn-primary * { color: var(--d-on, #fff) !important; text-shadow: var(--d-ts, 0 1px 8px rgba(0,0,0,.6)) !important; }

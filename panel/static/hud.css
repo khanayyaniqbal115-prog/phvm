@@ -1,0 +1,49 @@
+/* PHvm HUD layer (v21.59) — only in the Danger style. */
+html.danger body { padding-bottom: 30px; }
+html.danger body > .hud-grid { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: linear-gradient(var(--d-line) 1px, transparent 1px), linear-gradient(90deg, var(--d-line) 1px, transparent 1px);
+  background-size: 56px 56px; opacity: .16; -webkit-mask-image: radial-gradient(70% 60% at 50% 30%, #000, transparent 80%); mask-image: radial-gradient(70% 60% at 50% 30%, #000, transparent 80%); }
+html:not(.danger) .hud-grid, html:not(.danger) #hud, html:not(.danger) #hudBoot, html:not(.danger) #hudRet { display: none !important; }
+
+/* status bar */
+#hud { position: fixed; left: 0; right: 0; bottom: 0; height: 28px; z-index: 900; display: flex; align-items: center; gap: 18px; padding: 0 16px 0 calc(var(--sidebar-w, 260px) + 16px);
+  background: rgba(4,4,8,.92); border-top: 1px solid var(--d-line); backdrop-filter: blur(8px);
+  font: 500 11px/1 'JetBrains Mono', ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); white-space: nowrap; overflow: hidden; }
+#hud::before { content: ''; position: absolute; left: 0; top: -1px; height: 1px; width: 30%; background: linear-gradient(90deg, transparent, var(--v-accent), transparent); animation: dgScan 6s linear infinite; }
+#hud b { color: var(--text-primary); font-weight: 600; }
+#hud .dot { display: inline-block; width: 7px; height: 7px; margin-right: 7px; background: var(--v-live); box-shadow: 0 0 8px var(--v-live); animation: hudBlink 1.6s steps(2) infinite; }
+#hud .dot.off { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+#hud .sp { margin-left: auto; }
+#hud kbd { border: 1px solid var(--d-line); padding: 2px 5px; color: var(--v-accent-text); font: inherit; }
+#hud .ping.ok { color: var(--v-live); } #hud .ping.mid { color: var(--warning); } #hud .ping.bad { color: var(--danger); }
+@keyframes hudBlink { 50% { opacity: .25; } }
+
+/* heading markers + reticle */
+html.danger .card-header h2::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 9px; vertical-align: middle; background: var(--v-accent); box-shadow: 0 0 10px var(--v-accent); animation: hudBlink 2.4s steps(2) infinite; }
+html.danger .page-header h1::before { content: '// '; color: var(--v-accent); -webkit-text-fill-color: var(--v-accent); font-family: 'JetBrains Mono', ui-monospace, monospace; opacity: .9; }
+#hudRet { position: fixed; left: 0; top: 0; width: 34px; height: 34px; margin: -17px 0 0 -17px; z-index: 4000; pointer-events: none; opacity: 0; transition: opacity .25s, width .18s, height .18s, margin .18s; filter: drop-shadow(0 0 4px var(--v-accent));
+  background:
+    linear-gradient(var(--v-accent), var(--v-accent)) top left / 9px 2px no-repeat, linear-gradient(var(--v-accent), var(--v-accent)) top left / 2px 9px no-repeat,
+    linear-gradient(var(--v-accent), var(--v-accent)) top right / 9px 2px no-repeat, linear-gradient(var(--v-accent), var(--v-accent)) top right / 2px 9px no-repeat,
+    linear-gradient(var(--v-accent), var(--v-accent)) bottom left / 9px 2px no-repeat, linear-gradient(var(--v-accent), var(--v-accent)) bottom left / 2px 9px no-repeat,
+    linear-gradient(var(--v-accent), var(--v-accent)) bottom right / 9px 2px no-repeat, linear-gradient(var(--v-accent), var(--v-accent)) bottom right / 2px 9px no-repeat; }
+#hudRet.on { opacity: .9; } #hudRet.hot { width: 48px; height: 48px; margin: -24px 0 0 -24px; }
+@media (hover: none), (max-width: 900px) { #hudRet { display: none !important; } }
+
+/* boot flash (once per browser session) */
+#hudBoot { position: fixed; inset: 0; z-index: 9000; background: #030306; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 14px; animation: hudOut .5s ease 1.15s forwards; font-family: 'JetBrains Mono', ui-monospace, monospace; }
+#hudBoot .t { color: var(--v-accent); font-size: 20px; letter-spacing: .3em; text-shadow: 0 0 20px var(--v-accent); }
+#hudBoot .s { color: var(--text-muted); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; min-height: 14px; }
+#hudBoot .bar { width: 220px; height: 2px; background: var(--d-line); overflow: hidden; }
+#hudBoot .bar i { display: block; height: 100%; width: 0; background: var(--v-accent); box-shadow: 0 0 12px var(--v-accent); animation: hudLoad 1s ease forwards; }
+@keyframes hudLoad { to { width: 100%; } } @keyframes hudOut { to { opacity: 0; visibility: hidden; } }
+
+/* segmented meters for resource bars */
+html.danger .bar, html.danger .progress, html.danger .meter { border-radius: 0 !important; background: repeating-linear-gradient(90deg, rgba(255,255,255,.06) 0 6px, transparent 6px 8px) !important; }
+html.danger .bar > i, html.danger .progress-fill, html.danger .meter-fill { border-radius: 0 !important; box-shadow: 0 0 12px -2px var(--v-accent); }
+
+@media (max-width: 900px) { #hud { padding-left: 12px; gap: 12px; } #hud .hide-m { display: none; } }
+@media (max-width: 640px) { #hud .opt { display: none; } }
+html.no-anim #hudBoot { display: none !important; }
+@media (prefers-reduced-motion: reduce) { #hudBoot { display: none !important; } #hud::before, #hud .dot, html.danger .card-header h2::before { animation: none; } }
+html.danger .sidebar { bottom: 28px !important; height: auto !important; }

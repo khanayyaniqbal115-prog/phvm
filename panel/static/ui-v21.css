@@ -1,0 +1,251 @@
+/* PHvm UI v21 — shared design layer.
+   Loaded last on every page, so it re-themes the whole panel through the
+   existing CSS variables, then refines components. Identity: blue-black ink
+   surfaces, one indigo "volt" accent, mint for live/healthy states. */
+
+:root {
+  --v-accent: #5f6df5;
+  --v-accent-2: #8b6cf5;
+  --v-accent-text: #9aa4ff;
+  --v-live: #3ddc97;
+  --v-ring: rgba(95,109,245,.35);
+
+  /* panel (base.html) tokens */
+  --bg-primary: #090b12;
+  --bg-secondary: #0e1119;
+  --bg-card: #121624;
+  --bg-sidebar: #0a0d15;
+  --bg-hover: #1a1f31;
+  --border: #232a3f;
+  --text-primary: #eaedf7;
+  --text-secondary: #a0a9c0;
+  --text-muted: #6a738c;
+  --accent: var(--v-accent);
+  --accent-hover: #7482ff;
+  --accent-dim: rgba(95,109,245,.18);
+  --success: #3ddc97;
+  --warning: #f2b04c;
+  --danger: #f06a6a;
+  --info: #6fb1ff;
+  --radius: 14px;
+  --hg-glass: rgba(18,22,36,.78);
+
+  /* standalone pages (login, landing, register, 2fa, license) tokens */
+  --bg: #090b12;
+  --card: #121624;
+  --border2: #2b3350;
+  --text: #eaedf7;
+  --muted: #6a738c;
+  --secondary: #a0a9c0;
+  --accent2: var(--v-accent-2);
+  --teal: #3ddc97;
+}
+
+body.theme-light {
+  --v-accent: #4a57e0;
+  --v-accent-2: #7a55e6;
+  --v-accent-text: #3f4bd0;
+  --bg-primary: #f2f4fb;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-sidebar: #f7f8fd;
+  --bg-hover: #eceffa;
+  --border: #dde2f2;
+  --text-primary: #161a2e;
+  --text-secondary: #525c78;
+  --text-muted: #8590ab;
+  --accent-dim: rgba(74,87,224,.14);
+  --hg-glass: rgba(255,255,255,.85);
+}
+
+/* ── Type ───────────────────────────────────────────── */
+h1, h2, h3, .page-header h1, .sidebar-brand .brand-text h1, .hero-name {
+  font-family: 'Space Grotesk', 'Space Grotesk Variable', system-ui, sans-serif;
+  letter-spacing: -.02em;
+}
+.page-header h1 { font-size: 26px; font-weight: 700; }
+
+/* ── Background: swap the platinum glow for a cool indigo one ── */
+body::before {
+  background:
+    radial-gradient(38% 34% at 15% 18%, rgba(95,109,245,.13), transparent 70%),
+    radial-gradient(34% 40% at 85% 12%, rgba(139,108,245,.08), transparent 72%),
+    radial-gradient(42% 36% at 72% 90%, rgba(61,220,151,.045), transparent 70%) !important;
+}
+body { background: var(--bg-primary); }
+body::after { opacity: .03; }
+#netBg { opacity: .45; }
+
+/* ── Sidebar ────────────────────────────────────────── */
+.sidebar {
+  background: linear-gradient(180deg, rgba(10,13,21,.94), rgba(8,10,17,.97)) !important;
+  border-right: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+body.theme-light .sidebar { background: var(--bg-sidebar) !important; }
+.nav-item { border-radius: 10px; padding: 10px 14px; }
+.nav-item:hover { background: var(--bg-hover); }
+.nav-item:hover i { transform: none; color: var(--v-accent-text); }
+.sidebar-nav .nav-item:hover { transform: none; }
+.nav-item.active {
+  background: linear-gradient(90deg, var(--accent-dim), transparent 92%) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none !important;
+  font-weight: 600;
+}
+.nav-item.active::before {
+  display: block !important; content: ''; position: absolute; left: -12px; top: 8px; bottom: 8px;
+  width: 3px; border-radius: 0 3px 3px 0; background: linear-gradient(180deg, var(--v-accent), var(--v-accent-2));
+}
+.nav-item.active i { color: var(--v-accent-text) !important; }
+.sidebar-brand .logo-icon {
+  background: linear-gradient(135deg, var(--v-accent), var(--v-accent-2));
+  color: #fff !important;
+}
+.sidebar-brand img { background: none !important; box-shadow: none !important; }
+
+/* ── Topbar ─────────────────────────────────────────── */
+.topbar { background: rgba(9,11,18,.78) !important; border-bottom: 1px solid var(--border) !important; }
+body.theme-light .topbar { background: rgba(255,255,255,.8) !important; }
+
+/* ── Cards: calmer glass, no cursor-spotlight or sheen ── */
+.card, .stat-card, .action-card, .plan-card, .product-card {
+  background: var(--hg-glass) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius);
+  box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 16px 32px -24px rgba(0,0,0,.8) !important;
+}
+.card:hover, .stat-card:hover, .action-card:hover, .plan-card:hover, .product-card:hover {
+  border-color: var(--v-ring) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 20px 40px -22px rgba(0,0,0,.85), 0 0 0 1px var(--accent-dim) !important;
+}
+.card-header { border-bottom: 1px solid var(--border); }
+.stat-card::before { background: linear-gradient(90deg, var(--v-accent), var(--v-accent-2)) !important; }
+
+/* ── Buttons ────────────────────────────────────────── */
+.btn { border-radius: 10px; font-weight: 600; transition: transform .12s, box-shadow .2s, background .2s, border-color .2s; }
+.btn-primary, .login-card .btn, form .btn:not([class*="btn-"]) {
+  background: linear-gradient(135deg, var(--v-accent), var(--v-accent-2));
+  color: #fff !important; border: none;
+  box-shadow: 0 8px 22px -10px var(--v-accent);
+}
+.btn-primary:hover, .login-card .btn:hover {
+  background: linear-gradient(135deg, #7482ff, #9d80ff);
+  box-shadow: 0 10px 26px -10px var(--v-accent);
+}
+.btn-primary:active { transform: translateY(1px); }
+.btn-primary::after { display: none; }
+.btn-secondary { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-primary); }
+.btn-secondary:hover { border-color: var(--v-ring); }
+.btn-success { background: rgba(61,220,151,.14); color: var(--v-live); border: 1px solid rgba(61,220,151,.35); }
+.btn-danger  { background: rgba(240,106,106,.12); color: var(--danger);  border: 1px solid rgba(240,106,106,.35); }
+
+/* ── Forms ──────────────────────────────────────────── */
+.form-control, select.form-control, textarea.form-control {
+  background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text-primary);
+}
+.form-control:focus { border-color: var(--v-accent) !important; box-shadow: 0 0 0 3px var(--accent-dim) !important; }
+.form-group label { color: var(--text-secondary); font-weight: 500; }
+:focus-visible { outline: 2px solid var(--v-accent); outline-offset: 2px; }
+
+/* ── Tables ─────────────────────────────────────────── */
+table.data-table th { color: var(--text-muted); font-weight: 600; background: transparent; border-bottom: 1px solid var(--border); }
+table.data-table td { border-bottom: 1px solid var(--border); }
+table.data-table tr:hover td { background: rgba(95,109,245,.06); }
+
+/* ── Status + badges ────────────────────────────────── */
+.badge, .stat-badge { border-radius: 999px; font-weight: 600; }
+.badge-success { background: rgba(61,220,151,.14); color: var(--v-live); }
+.badge-danger  { background: rgba(240,106,106,.14); color: var(--danger); }
+.badge-warning { background: rgba(242,176,76,.14);  color: var(--warning); }
+.badge-info    { background: rgba(111,177,255,.14); color: var(--info); }
+.badge-purple  { background: rgba(139,108,245,.16); color: #b9a4ff; }
+.status-pill { border-radius: 999px; }
+
+/* ── Flash messages ─────────────────────────────────── */
+.flash { border-radius: 12px; border: 1px solid var(--border); backdrop-filter: blur(6px); }
+.flash-success { background: rgba(61,220,151,.10); border-color: rgba(61,220,151,.35); color: #9cf0c8; }
+.flash-danger  { background: rgba(240,106,106,.10); border-color: rgba(240,106,106,.35); color: #ffb3b3; }
+.flash-warning { background: rgba(242,176,76,.10);  border-color: rgba(242,176,76,.35);  color: #ffd699; }
+.flash-info    { background: rgba(111,177,255,.10); border-color: rgba(111,177,255,.35); color: #b5d8ff; }
+
+/* ── Standalone pages: login / register / 2fa / license / landing ── */
+.login-card, .license-card, .reg-card {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-top: 1px solid var(--border) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 30px 70px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(95,109,245,.06) !important;
+}
+.login-card .icon-wrap, .brand .logo, .logo {
+  background: linear-gradient(135deg, var(--v-accent), var(--v-accent-2)) !important;
+  color: #fff !important; box-shadow: 0 10px 26px -10px var(--v-accent) !important;
+}
+.footer-links a { color: var(--v-accent-text) !important; }
+.step-num, .step-card:nth-child(3) .step-num { color: #fff !important; background: linear-gradient(135deg, var(--v-accent), var(--v-accent-2)) !important; }
+.btn-outline { border-color: var(--border2); }
+.btn-outline:hover { border-color: var(--v-accent) !important; background: var(--accent-dim) !important; }
+
+/* ── Scrollbar + selection ──────────────────────────── */
+::selection { background: rgba(95,109,245,.35); color: #fff; }
+
+/* ── Respect reduced motion ─────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ── Card selector (buy page: runtime / server software) ── */
+.seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.seg-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left;
+  padding: 14px; border-radius: 12px; cursor: pointer; font: inherit; color: var(--text-primary);
+  background: var(--bg-secondary); border: 1px solid var(--border); transition: border-color .15s, background .15s;
+}
+.seg-item i { font-size: 18px; color: var(--text-muted); margin-bottom: 4px; }
+.seg-item b { font-weight: 600; font-size: 14px; }
+.seg-item small { color: var(--text-muted); font-size: 12px; line-height: 1.4; }
+.seg-item:hover { border-color: var(--v-ring); }
+.seg-item[aria-pressed="true"] { border-color: var(--v-accent); background: var(--accent-dim); }
+.seg-item[aria-pressed="true"] i { color: var(--v-accent-text); }
+
+/* ── Plan type chip ── */
+.type-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; background: var(--accent-dim); color: var(--v-accent-text); }
+
+/* ── Dashboard hero ─────────────────────────────────── */
+.hero-card {
+  background:
+    radial-gradient(60% 140% at 100% 0%, rgba(139,108,245,.22), transparent 60%),
+    radial-gradient(50% 120% at 0% 100%, rgba(95,109,245,.18), transparent 65%),
+    var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 18px !important;
+}
+.hero-card .btn {
+  background: linear-gradient(135deg, var(--v-accent), var(--v-accent-2)) !important;
+  color: #fff !important; border: none; box-shadow: 0 10px 26px -10px var(--v-accent);
+}
+.hero-pill { background: var(--accent-dim) !important; color: var(--v-accent-text) !important; border-radius: 999px; }
+.hero-name { background: none !important; -webkit-text-fill-color: var(--text-primary); color: var(--text-primary); animation: none !important; }
+.live-dot { background: var(--v-live) !important; box-shadow: 0 0 0 4px rgba(61,220,151,.18); }
+
+/* ── Mobile: the dashboard forces 4 stat columns inline, and
+   wide tables / action rows overflow on phones ─────────────── */
+@media (max-width: 900px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .dash-2col, .form-row, .form-row-3 { grid-template-columns: 1fr !important; }
+  .hero-card { flex-direction: column; align-items: flex-start !important; gap: 14px; }
+  .hero-card .btn { width: 100%; justify-content: center; }
+}
+@media (max-width: 560px) {
+  .content { padding: 16px 14px !important; }
+  .page-header { flex-direction: column; align-items: flex-start !important; gap: 8px; }
+  .page-header h1 { font-size: 22px; }
+  .stat-card { padding: 16px !important; }
+  .card-header { flex-wrap: wrap; gap: 8px; }
+  .btn { min-height: 40px; }                 /* comfortable tap target */
+  .seg { grid-template-columns: 1fr; }
+  .login-card { padding: 28px 20px !important; }
+}
+.card-body, .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }

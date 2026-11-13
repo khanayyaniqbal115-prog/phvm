@@ -1,0 +1,91 @@
+/* PHvm polish layer (v21.55) — loaded after ui-v21.css, mobile.css and anim.css.
+   Accent colour comes from the profile menu picker (see polish.js), everything below follows --v-accent. */
+html { scroll-behavior: smooth; }
+::selection { background: var(--accent-dim); color: var(--text-primary); }
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--v-ring); background-clip: content-box; }
+
+/* soft aurora behind the content (follows the accent) */
+body::before {
+  background:
+    radial-gradient(46% 38% at 12% 8%, color-mix(in srgb, var(--v-accent) 20%, transparent), transparent 70%),
+    radial-gradient(40% 44% at 92% 4%, color-mix(in srgb, var(--v-accent-2) 15%, transparent), transparent 72%),
+    radial-gradient(46% 40% at 70% 98%, rgba(61,220,151,.06), transparent 70%) !important;
+}
+
+/* page titles: gradient ink + accent underline */
+.page-header h1 { background: linear-gradient(90deg, var(--text-primary), var(--v-accent-text)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.page-header h1 i { -webkit-text-fill-color: var(--accent); }
+.page-header { position: relative; padding-bottom: 14px; margin-bottom: 22px; }
+.page-header::after { content: ''; position: absolute; left: 0; bottom: 0; width: 56px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--v-accent), var(--v-accent-2)); }
+.page-header p { color: var(--text-secondary); }
+
+/* cards: lighter header, gradient hairline on hover */
+.card { overflow: hidden; }
+.card-header { background: linear-gradient(180deg, color-mix(in srgb, var(--v-accent) 5%, transparent), transparent); }
+.card-header h2 { font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+.card-header h2 i { color: var(--v-accent-text); margin-right: 6px; }
+.stat-card .stat-value { font-family: 'Space Grotesk', system-ui, sans-serif; font-weight: 700; letter-spacing: -.02em; }
+.stat-card .stat-icon, .action-card .action-icon { background: linear-gradient(135deg, var(--accent-dim), transparent) !important; color: var(--v-accent-text) !important; border: 1px solid var(--accent-dim); border-radius: 12px; }
+
+/* sidebar */
+.nav-section-title { letter-spacing: .12em; font-size: 10.5px; opacity: .75; }
+.nav-item { margin: 2px 0; transition: background .2s, color .2s, padding-left .2s; }
+.nav-item:hover { padding-left: 17px; }
+.nav-item.active { box-shadow: inset 0 0 0 1px var(--accent-dim) !important; }
+.sidebar-brand .logo-icon { box-shadow: 0 8px 24px -8px var(--v-accent); }
+
+/* buttons */
+.btn-primary:hover, .login-card .btn:hover { background: linear-gradient(135deg, var(--v-accent), var(--v-accent-2)) !important; filter: brightness(1.12); }
+.btn-primary { letter-spacing: .01em; }
+.btn-secondary:hover { background: var(--accent-dim); color: var(--text-primary); }
+.btn:focus-visible, .nav-item:focus-visible, a:focus-visible { outline: 2px solid var(--v-accent); outline-offset: 2px; }
+
+/* inputs */
+.form-control { border-radius: 10px; background: color-mix(in srgb, var(--bg-secondary) 85%, transparent); }
+.form-control:hover { border-color: var(--v-ring); }
+.form-control:focus { border-color: var(--v-accent) !important; box-shadow: 0 0 0 3px var(--accent-dim) !important; outline: none; }
+select.form-control { cursor: pointer; }
+input[type=checkbox], input[type=radio], input[type=range] { accent-color: var(--v-accent); }
+
+/* tables */
+.data-table { border-collapse: separate; border-spacing: 0; }
+.data-table thead th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); background: color-mix(in srgb, var(--bg-secondary) 70%, transparent); border-bottom: 1px solid var(--border); position: sticky; top: 0; }
+.data-table tbody tr:hover { background: color-mix(in srgb, var(--accent-dim) 60%, transparent); }
+.data-table tbody td { border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+/* badges as soft pills with a dot */
+.badge { border-radius: 999px; padding: 3px 10px 3px 8px; font-weight: 600; font-size: 11.5px; border: 1px solid transparent; }
+.badge-success { border-color: rgba(61,220,151,.25); } .badge-warning { border-color: rgba(242,176,76,.25); }
+.badge-danger { border-color: rgba(240,106,106,.25); } .badge-info { border-color: rgba(111,177,255,.25); }
+.badge-purple { color: var(--v-accent-text); border-color: var(--accent-dim); }
+
+/* flash messages */
+.flash { border-radius: 12px; border-left-width: 4px; backdrop-filter: blur(8px); box-shadow: 0 14px 30px -18px rgba(0,0,0,.7); }
+
+/* tabs */
+.tabs, .tab-bar { border-bottom: 1px solid var(--border); }
+.tab.active { color: var(--v-accent-text); border-bottom-color: var(--v-accent); }
+
+/* dropdowns */
+.dd-menu { border-radius: 14px; border: 1px solid var(--border); box-shadow: 0 24px 50px -20px rgba(0,0,0,.85); backdrop-filter: blur(14px); background: var(--hg-glass); }
+.dd-menu a { border-radius: 8px; transition: background .15s; }
+.dd-menu a:hover { background: var(--accent-dim); }
+
+/* accent picker */
+.acc-row { display: flex; gap: 8px; padding: 8px 14px 10px; align-items: center; }
+.acc-row span.lbl { font-size: 12px; color: var(--text-muted); margin-right: auto; }
+.acc-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; transition: transform .15s, border-color .15s; background: var(--c); }
+.acc-dot:hover { transform: scale(1.18); }
+.acc-dot.on { border-color: var(--text-primary); box-shadow: 0 0 0 2px var(--bg-card); }
+
+/* toasts / empty states */
+.empty-state, .text-center.text-muted { opacity: .9; }
+@media (max-width: 640px) { .page-header::after { width: 40px; } .nav-item:hover { padding-left: 14px; } }
+@media print { body::before { display: none !important; } .page-header h1 { -webkit-text-fill-color: #000; } }
+body.theme-light .flash { color: var(--text-primary); background: rgba(255,255,255,.92); }
+body.theme-light .flash.flash-success, body.theme-light .flash-success { border-left-color: var(--success); }
+

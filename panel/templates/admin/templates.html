@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Templates — {{ site_name }}{% endblock %}
+{% block breadcrumb %}<span>PHvm</span> <span class="sep">›</span> <span class="current">Template approvals</span>{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-puzzle-piece"></i> Template approvals</h1></div>
+<form method="post" class="card" style="padding:14px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="action" value="fee">Platform fee on paid templates (%): <input class="form-control" name="fee" value="{{ fee }}" style="width:90px;"><button class="btn btn-secondary btn-sm">Save</button></form>
+{% for x in rows %}<div class="card" style="padding:16px;margin-bottom:12px;">
+  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;"><div><b>{{ x.r.name }}</b> · {{ kinds.get(x.r.kind, x.r.kind) }} · by {{ x.r.username }} · ⚡{{ '%.2f'|format(x.r.price or 0) }} · {{ (x.r.size or 0) // 1024 }} KB · <span class="badge">{{ x.r.status }}</span></div>
+  {% if x.r.status == 'pending' %}<form method="post" style="display:flex;gap:6px;"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="id" value="{{ x.r.id }}"><button class="btn btn-primary btn-sm" name="action" value="approve">Approve</button><button class="btn btn-secondary btn-sm" name="action" value="reject">Reject</button></form>{% endif %}</div>
+  <div class="muted-note" style="margin:6px 0;">{{ x.r.descr }}</div>
+  <details><summary>{{ x.n }} files — check for secrets or scripts before approving</summary><pre style="font-size:12px;max-height:200px;overflow:auto;">{% for f in x.files %}{{ f }}
+{% endfor %}</pre></details></div>{% else %}<div class="muted-note">Nothing yet.</div>{% endfor %}
+{% endblock %}

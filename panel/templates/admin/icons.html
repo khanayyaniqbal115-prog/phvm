@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Icons — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span> <span class="current">Icons</span>
+{% endblock %}
+{% block extra_css %}
+<style>
+    .icon-card { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+    .icon-card img {
+        width: 48px; height: 48px; border-radius: 8px; border: 1px solid var(--border);
+        object-fit: cover; background: var(--bg-secondary);
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-image"></i> Icons</h1>
+    <p>Customize the browser tab icon and sidebar logo</p>
+</div>
+
+<div class="card">
+    <div class="card-body form-pad">
+        <h3 style="font-size:14px;margin-bottom:4px;color:var(--text-secondary);"><i class="fas fa-window-maximize"></i> Site Icon (Favicon)</h3>
+        <p class="form-hint" style="margin-bottom:0;">Shown in the browser tab. Paste a direct image URL, or upload a file.</p>
+
+        <form method="POST" action="{{ url_for('admin_settings') }}" style="margin-top:14px;">
+<input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <div class="form-group" style="margin-bottom:10px;">
+                <input type="text" name="setting_site_icon_url" class="form-control" value="{{ settings.get('site_icon_url', '') }}" placeholder="https://example.com/icon.png">
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm"><i class="fas fa-link"></i> Save URL</button>
+        </form>
+
+        <div class="icon-card">
+            {% if settings.get('site_icon_url') %}
+            <img src="{{ settings.get('site_icon_url') }}" alt="Current icon">
+            {% endif %}
+            <form method="POST" action="{{ url_for('admin_settings_icon_upload') }}" enctype="multipart/form-data" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <input type="file" name="icon" accept=".png,.jpg,.jpeg,.ico,.svg,.webp" required>
+                <button type="submit" class="btn btn-secondary"><i class="fas fa-upload"></i> Upload Icon</button>
+            </form>
+            {% if settings.get('site_icon_url') %}
+            <form method="POST" action="{{ url_for('admin_settings_icon_remove') }}">
+<input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Remove the site icon?')"><i class="fas fa-trash"></i> Remove</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top:20px;">
+    <div class="card-body form-pad">
+        <h3 style="font-size:14px;margin-bottom:4px;color:var(--text-secondary);"><i class="fas fa-bars"></i> Sidebar Icon</h3>
+        <p class="form-hint" style="margin-bottom:0;">Replaces the logo shown at the top of the sidebar. Paste a direct image URL, or upload a file.</p>
+
+        <form method="POST" action="{{ url_for('admin_settings') }}" style="margin-top:14px;">
+<input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <div class="form-group" style="margin-bottom:10px;">
+                <input type="text" name="setting_sidebar_icon_url" class="form-control" value="{{ settings.get('sidebar_icon_url', '') }}" placeholder="https://example.com/logo.png">
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm"><i class="fas fa-link"></i> Save URL</button>
+        </form>
+
+        <div class="icon-card">
+            {% if settings.get('sidebar_icon_url') %}
+            <img src="{{ settings.get('sidebar_icon_url') }}" alt="Current sidebar icon">
+            {% endif %}
+            <form method="POST" action="{{ url_for('admin_settings_sidebar_icon_upload') }}" enctype="multipart/form-data" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+<input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <input type="file" name="icon" accept=".png,.jpg,.jpeg,.ico,.svg,.webp" required>
+                <button type="submit" class="btn btn-secondary"><i class="fas fa-upload"></i> Upload Icon</button>
+            </form>
+            {% if settings.get('sidebar_icon_url') %}
+            <form method="POST" action="{{ url_for('admin_settings_sidebar_icon_remove') }}">
+<input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Remove the sidebar icon?')"><i class="fas fa-trash"></i> Remove</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

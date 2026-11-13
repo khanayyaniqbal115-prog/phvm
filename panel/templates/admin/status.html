@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Status page — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span> <span class="current">Status page</span>
+{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-signal"></i> Public status page</h1>
+<p>{% if enabled %}Live at <a href="{{ url_for('status_page') }}" target="_blank">/status</a>.{% else %}Turned off. Enable it in Settings → Status page.{% endif %} Add what customers care about: your website, the panel, a game server address, etc.</p></div>
+<div class="card" style="margin-bottom:18px;max-width:760px;"><div class="card-body">
+    <form method="post" class="form-row" style="gap:8px;align-items:end;flex-wrap:wrap;">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="action" value="add">
+        <div><label>Name</label><input class="form-control" name="name" placeholder="Website" required></div>
+        <div style="flex:1;min-width:220px;"><label>Address to check</label><input class="form-control" name="url" placeholder="https://example.com" required></div>
+        <button class="btn btn-primary btn-sm">Add</button>
+    </form>
+</div></div>
+<div class="card" style="max-width:760px;"><div class="card-body">
+    <table class="data-table"><thead><tr><th>Name</th><th>Address</th><th></th></tr></thead><tbody>
+    {% for c in comps %}<tr><td>{{ c.name }}</td><td class="text-muted">{{ c.url }}</td>
+        <td><form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="action" value="del"><input type="hidden" name="id" value="{{ c.id }}"><button class="btn btn-sm">Remove</button></form></td></tr>
+    {% else %}<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-muted);">Nothing added yet.</td></tr>{% endfor %}
+    </tbody></table>
+</div></div>
+{% endblock %}

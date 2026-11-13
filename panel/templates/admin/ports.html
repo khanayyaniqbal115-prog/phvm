@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Connection doctor — {{ site_name }}{% endblock %}
+{% block breadcrumb %}<span>PHvm</span> <span class="sep">›</span> <span class="current">Connection doctor</span>{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-plug-circle-check"></i> Connection doctor</h1>
+<p>Players or SSH cannot connect? This page checks every server port: is something listening, does the host firewall allow it, and does the public address answer.</p></div>
+<div class="card" style="max-width:980px;margin-bottom:18px;"><div class="card-body">
+<p><b>Address shown to players:</b> <code>{{ ip }}</code> {% if v4 %}<span style="color:#3fb950">(IPv4 ✓)</span>{% else %}<span style="color:#f85149">— not a public IPv4! Set "Server IP" in Admin → Settings to your VPS IPv4.</span>{% endif %}{% if manual_ip %} <span class="muted-note">(set manually)</span>{% endif %}</p>
+<p>Host firewall: ufw <b>{{ 'active' if st.ufw else 'off' }}</b> · firewalld <b>{{ 'running' if st.firewalld else 'off' }}</b> · iptables default DROP <b>{{ 'yes' if st.iptables_drop else 'no' }}</b>. Ports are opened automatically every 2 minutes.</p>
+<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="btn btn-primary"><i class="fas fa-lock-open"></i> Open all ports now</button></form></div></div>
+<div class="card" style="max-width:980px;margin-bottom:18px;"><div class="card-body" style="overflow-x:auto;">
+<table class="data-table"><thead><tr><th>Server</th><th>Port</th><th>Listening on server</th><th>Reachable on public IP</th><th>What it means</th></tr></thead><tbody>
+{% for r in rows %}<tr><td>{{ r.name }} <span class="muted-note">{{ r.label or r.kind }}</span></td><td><code>{{ r.port }}/{{ r.proto }}</code></td>
+<td>{% if r.listening is none %}—{% elif r.listening %}<span style="color:#3fb950">yes</span>{% else %}<span style="color:#f85149">no</span>{% endif %}</td>
+<td>{% if r.public is none %}—{% elif r.public %}<span style="color:#3fb950">yes</span>{% else %}<span style="color:#f85149">no</span>{% endif %}</td>
+<td class="text-muted" style="font-size:13px;">{% if r.listening is none %}UDP cannot be tested here.{% elif not r.listening %}Server is stopped or still starting — start it and refresh.{% elif r.public == false %}Server is fine, but the public IP does not answer: open this port in your VPS provider's firewall / security group (Oracle, AWS, Azure, Contabo, Hetzner Cloud…).{% else %}Looks good from this machine.{% endif %}</td></tr>
+{% else %}<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text-muted);">No forwarded ports yet.</td></tr>{% endfor %}
+</tbody></table>
+<p class="muted-note" style="margin-top:12px;">The panel can open the <b>server's own</b> firewall. A <b>provider/cloud firewall</b> (security group, "network rules" in your hosting dashboard) is outside the server — you must open the port range there, e.g. TCP+UDP 25565-25700 and your SSH range (10000-30000 by default).</p>
+</div></div>
+{% endblock %}

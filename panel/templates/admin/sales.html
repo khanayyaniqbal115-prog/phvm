@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Sales — {{ site_name }}{% endblock %}
+{% block breadcrumb %}<span>PHvm</span> <span class="sep">›</span> <span class="current">Sale campaigns</span>{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-tags"></i> Sale campaigns</h1>
+<p>Starts a coupon and shows a countdown banner on every page. The coupon works on website plans and domains (not on VM plans).</p></div>
+{% if live %}<div class="card" style="max-width:640px;margin-bottom:18px;"><div class="card-body">
+<p><b>{{ title }}</b> is live — code <b>{{ code }}</b>, {{ pct }}% off, used {{ used }} time(s).</p><p>Ends: <b id="se"></b></p>
+<form method="POST"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="action" value="stop"><button class="btn btn-secondary" type="submit">End sale now</button></form>
+</div></div><script>document.getElementById('se').textContent=new Date({{ end }}*1000).toLocaleString()</script>{% endif %}
+<div class="card" style="max-width:640px;"><div class="card-header"><h2>{{ 'Replace sale' if live else 'Start a sale' }}</h2></div><div class="card-body">
+<form method="POST"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="action" value="start">
+<div class="form-group"><label>Title</label><input class="form-control" name="title" value="Weekend Sale" maxlength="40"></div>
+<div class="form-group"><label>Coupon code</label><input class="form-control" name="code" placeholder="WEEKEND30" maxlength="20" required></div>
+<div class="form-group"><label>Discount %</label><input class="form-control" type="number" name="percent" min="1" max="90" value="20" required></div>
+<div class="form-group"><label>Lasts (hours)</label><input class="form-control" type="number" name="hours" min="1" max="1440" value="48" required></div>
+<div class="form-group"><label>Max uses (0 = unlimited)</label><input class="form-control" type="number" name="max_uses" min="0" value="0"></div>
+<button class="btn btn-primary" type="submit">Start sale</button></form></div></div>
+{% endblock %}

@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Nodes — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span> <span class="current">Nodes</span>
+{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+        <h1><i class="fas fa-network-wired"></i> Compute Nodes</h1>
+        <p>Hosts that can run virtual machines. The panel host is the Local Node. <span class="dash-live"><span class="live-dot"></span> Live · Auto-refresh 20s</span></p>
+    </div>
+    <div style="display:flex;gap:10px;">
+        <button type="button" class="btn btn-secondary" onclick="location.reload()"><i class="fas fa-rotate"></i> Refresh</button>
+        <form method="POST">
+<input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="action" value="ensure_local">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Ensure Local Node</button>
+    </form>
+    </div>
+</div>
+
+<div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+    <div class="stat-card">
+        <div class="stat-value" style="font-size:24px;" data-node-count="{{ nodes|length }}">{{ nodes|length }}</div>
+        <div class="stat-label">Nodes</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="font-size:24px;color:{% if have_kvm %}var(--success){% else %}var(--warning){% endif %};">
+            {% if have_kvm %}KVM{% else %}TCG{% endif %}
+        </div>
+        <div class="stat-label">Local Acceleration</div>
+    </div>
+</div>
+
+<div class="card mt-2">
+    <div class="card-header"><h2>Nodes</h2></div>
+    <div class="card-body" style="overflow-x:auto;">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Node</th>
+                    <th>Hostname</th>
+                    <th>Status</th>
+                    <th>Resources</th>
+                    <th>Accel</th>
+                    <th>VMs</th>
+                    <th>Last Seen</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for n in nodes %}
+                <tr>
+                    <td>
+                        <div style="font-weight:600;">
+                            {{ n.name }}
+                            {% if n.is_local %}<span class="badge badge-purple" style="margin-left:6px;">LOCAL</span>{% endif %}
+                        </div>
+                        <div class="text-muted" style="font-size:11px;">{{ n.notes or '' }}</div>
+                    </td>
+                    <td style="font-family:monospace;font-size:12px;">{{ n.hostname or '—' }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'success' if n.status=='online' else 'secondary' }}">{{ n.status }}</span>
+                    </td>
+                    <td>
+                        {{ n.cpu_cores or '?' }} CPU ·
+                        {% if n.ram_mb %}{{ (n.ram_mb / 1024)|round(1) }} GB RAM{% else %}?{% endif %} ·
+                        {{ n.disk_gb or '?' }} GB disk
+                    </td>
+                    <td>
+                        {% if n.has_kvm %}
+                        <span class="badge badge-success">KVM</span>
+                        {% else %}
+                        <span class="badge badge-warning">TCG</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ n.vm_count }}</td>
+                    <td class="text-muted" style="font-size:12px;">{{ n.last_seen|datetime if n.last_seen else '—' }}</td>
+                    <td style="white-space:nowrap;">
+                        <button type="button" class="btn-icon btn-secondary" title="Ping now" onclick="pingNode({{ n.id }}, this)">
+                            <i class="fas fa-satellite-dish"></i>
+                        </button>
+                        {% if not n.is_local %}
+                        <form method="POST" style="display:inline;" onsubmit="return confirm('Remove node {{ n.name }}? It must have no VMs assigned.')">
+                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                            <input type="hidden" name="action" value="delete_node">
+                            <input type="hidden" name="node_id" value="{{ n.id }}">
+                            <button type="submit" class="btn-icon btn-secondary" title="Remove node"><i class="fas fa-trash"></i></button>
+                        </form>
+                        {% endif %}
+                        <span id="pingResult-{{ n.id }}" style="font-size:11px;display:block;margin-top:4px;"></span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-muted);">No nodes.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mt-2">
+    <div class="card-header"><h2><i class="fas fa-server"></i> Add a Remote Node</h2></div>
+    <div class="card-body" style="padding:20px;">
+        <p class="text-muted" style="font-size:13px;margin-bottom:16px;">
+            Remote nodes actually run VMs — when you create a VM on a remote node, the panel
+            downloads the image, builds cloud-init and starts QEMU <strong>on that machine</strong>,
+            not on this panel host. The other server needs <code>qemu-system-x86</code>,
+            <code>qemu-utils</code>, <code>cloud-image-utils</code> and <code>wget</code> installed.
+        </p>
+
+        {% if node_register_token %}
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">
+            <div>
+                <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">Registration token</label>
+                <input type="text" readonly value="{{ node_register_token }}" onclick="this.select()"
+                       style="font-family:monospace;font-size:12px;width:340px;" class="form-control">
+            </div>
+            <form method="POST" style="align-self:flex-end;">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <input type="hidden" name="action" value="generate_token">
+                <button type="submit" class="btn btn-secondary btn-sm"
+                        onclick="return confirm('Generate a new token? Any node not yet registered with the old one will need the new one.')">
+                    <i class="fas fa-rotate"></i> Regenerate
+                </button>
+            </form>
+        </div>
+
+        <label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px;">
+            Run this on the second server (needs Python 3 + <code>pip install flask psutil requests</code>, and <code>node.py</code> copied over from this panel's install):
+        </label>
+        <div style="position:relative;">
+            <pre id="nodeCmd" style="background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:12.5px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;">export PHvm_PANEL_URL={{ panel_url }}
+export PHvm_NODE_TOKEN={{ node_register_token }}
+export PHvm_NODE_NAME=node-2
+export PHvm_AGENT_PORT=5050
+python3 node.py</pre>
+            <button type="button" class="btn btn-secondary btn-sm" style="position:absolute;top:8px;right:8px;"
+                    onclick="phvmCopy(document.getElementById('nodeCmd').innerText, this)">
+                <i class="fas fa-copy"></i> Copy
+            </button>
+        </div>
+        <p class="text-muted" style="font-size:12px;margin-top:10px;">
+            Once it prints <code>[OK] Registered as node_id=...</code> and <code>Agent API on 0.0.0.0:5050</code>,
+            the node appears below within ~30s. Make sure port 5050 (or whatever <code>PHvm_AGENT_PORT</code> you chose)
+            is reachable from this panel — open it in your firewall/security group.
+        </p>
+        {% else %}
+        <p style="margin-bottom:12px;">No registration token set yet — generate one first, then run <code>node.py</code> on the other server with it.</p>
+        <form method="POST">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="generate_token">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-key"></i> Generate Registration Token</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mt-2">
+    <div class="card-header"><h2>About acceleration</h2></div>
+    <div class="card-body" style="padding:20px;font-size:13px;color:var(--text-secondary);line-height:1.6;">
+        <p><strong>KVM</strong> — hardware virtualization via <code>/dev/kvm</code> (fast).</p>
+        <p><strong>TCG</strong> — QEMU software emulation fallback when KVM is missing (slower, works everywhere).</p>
+        <p style="margin-top:8px;">When creating a VM, pick the node from the <strong>Node</strong> dropdown — VMs on a remote node run entirely on that machine, including their SSH access.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const PHVM_CSRF = {{ csrf_token|tojson if csrf_token is defined else '""' }};
+
+async function pingNode(nodeId, btn) {
+    const resultEl = document.getElementById('pingResult-' + nodeId);
+    btn.disabled = true;
+    const icon = btn.querySelector('i');
+    icon.className = 'fas fa-spinner fa-spin';
+    if (resultEl) { resultEl.textContent = 'Pinging…'; resultEl.style.color = 'var(--text-muted)'; }
+    try {
+        const res = await fetch(`/admin/nodes/${nodeId}/ping`, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': PHVM_CSRF },
+        });
+        const data = await res.json();
+        if (resultEl) {
+            resultEl.style.color = data.success ? 'var(--success, #3ecf6a)' : 'var(--danger, #e05252)';
+            const latency = (data.latency_ms !== undefined) ? ` (${data.latency_ms}ms)` : '';
+            resultEl.textContent = (data.success ? '✓ ' : '✗ ') + (data.message || '') + latency;
+        }
+    } catch (e) {
+        if (resultEl) { resultEl.style.color = 'var(--danger, #e05252)'; resultEl.textContent = '✗ Request failed'; }
+    } finally {
+        btn.disabled = false;
+        icon.className = 'fas fa-satellite-dish';
+    }
+}
+
+// Auto-refresh the whole page every 20s, same pattern as the dashboard —
+// but pause it while a ping result is showing so it doesn't wipe feedback
+// mid-read, and skip it entirely if the "waiting for a new node" banner
+// below is actively watching (that has its own smarter refresh).
+let _pageRefreshOk = true;
+setTimeout(() => { if (_pageRefreshOk) location.reload(); }, 20000);
+
+// If a registration token is visible, watch for a new node showing up and
+// reload automatically the moment it registers — no manual refresh needed.
+(function watchForNewNode() {
+    const startCountEl = document.querySelector('[data-node-count]');
+    if (!startCountEl) return;
+    _pageRefreshOk = false; // let the watcher below own refreshing instead
+    const startCount = parseInt(startCountEl.getAttribute('data-node-count'), 10) || 0;
+    let tries = 0;
+    const iv = setInterval(async () => {
+        tries++;
+        if (tries > 90) { clearInterval(iv); _pageRefreshOk = true; return; } // ~7.5 min cap
+        try {
+            const res = await fetch('/admin/nodes/count');
+            const data = await res.json();
+            if (data.count > startCount) {
+                clearInterval(iv);
+                location.reload();
+            }
+        } catch (e) { /* ignore transient errors */ }
+    }, 5000);
+})();
+</script>
+{% endblock %}

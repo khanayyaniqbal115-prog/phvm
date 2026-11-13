@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}DDoS shield — {{ site_name }}{% endblock %}
+{% block breadcrumb %}<span>PHvm</span> <span class="sep">›</span> <span class="current">DDoS shield</span>{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-shield-halved"></i> DDoS shield</h1>
+<p>Stops request floods and connection floods on the panel and every hosted website, automatically. It cannot stop an attack bigger than this server's internet link — for that, put your domains behind Cloudflare and use Under Attack mode below.</p></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;max-width:1100px;margin-bottom:18px;">
+<div class="card"><div class="card-header"><h2>1. Flood protection</h2></div><div class="card-body form-pad">
+<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="action" value="save">
+<p class="muted-note" style="margin-bottom:12px;"><b>Always ON</b> — this protection is built in and cannot be switched off. It watches all website traffic, throttles anonymous floods, bans URL scanners and repeat offenders (each repeat ban is 4× longer).</p>
+<div class="form-group"><label>Ban an IP that sends more than (requests)</label><input class="form-control" type="number" name="ddos_threshold" value="{{ thr }}"></div>
+<div class="form-group"><label>…within (seconds)</label><input class="form-control" type="number" name="ddos_window" value="{{ win }}"></div>
+<div class="form-group"><label>Ban length (minutes)</label><input class="form-control" type="number" name="ddos_ban_minutes" value="{{ mins }}"></div>
+<div class="form-group"><label>Never ban these IPs (one per line or comma-separated; private IPs are always safe)</label><textarea class="form-control" name="ddos_whitelist" rows="3">{{ wl }}</textarea></div>
+<button class="btn btn-primary">Save</button></form></div></div>
+<div class="card"><div class="card-header"><h2>2. Network shield</h2></div><div class="card-body form-pad">
+<p class="muted-note">SYN cookies, per-IP limits on new connections, simultaneous web connections, ICMP and UDP floods. SSH and the panel port are never limited. Status: <b>{{ 'ALWAYS ON' if shield else 'applying…' }}</b>{% if not has_ipt %} — <span style="color:var(--danger)">iptables not found on this server</span>{% endif %}.</p>
+<form method="post" style="display:flex;gap:8px;"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="action" value="shield">
+<button class="btn btn-primary" name="mode" value="on">Re-apply rules</button></form>
+<hr style="margin:16px 0;border-color:var(--border);">
+<h3 style="font-size:15px;margin-bottom:6px;">3. Cloudflare Under Attack mode</h3>
+<p class="muted-note">Makes Cloudflare challenge every visitor on your domains. Status: <b>{{ 'ON' if attack else 'off' }}</b>{% if not has_cf %} — add the Cloudflare API token in Settings first{% endif %}.</p>
+<form method="post" style="display:flex;gap:8px;"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="action" value="attack">
+<button class="btn btn-danger" name="mode" value="on">Under Attack ON</button><button class="btn btn-secondary" name="mode" value="off">OFF</button></form></div></div>
+</div>
+<div class="card" style="max-width:1100px;margin-bottom:18px;"><div class="card-header"><h2>Banned right now ({{ bans|length }})</h2></div><div class="card-body" style="overflow-x:auto;">
+<form method="post" style="display:flex;gap:8px;margin-bottom:10px;"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="action" value="ban"><input class="form-control" name="ip" placeholder="IP to ban" style="max-width:220px;"><button class="btn btn-secondary">Ban</button></form>
+<table class="data-table"><thead><tr><th>IP</th><th>Reason</th><th>Minutes left</th><th></th></tr></thead><tbody>
+{% for b in bans %}<tr><td><code>{{ b.ip }}</code></td><td>{{ b.reason }}</td><td>{{ ((b.until - now) / 60)|round|int }}</td><td><form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="action" value="unban"><input type="hidden" name="ip" value="{{ b.ip }}"><button class="btn btn-secondary btn-sm">Unban</button></form></td></tr>
+{% else %}<tr><td colspan="4" style="text-align:center;padding:18px;color:var(--text-muted);">Nobody is banned.</td></tr>{% endfor %}
+</tbody></table></div></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;max-width:1100px;">
+<div class="card"><div class="card-header"><h2>Busiest IPs (last {{ win }}s)</h2></div><div class="card-body"><table class="data-table"><tbody>{% for ip, n in top %}<tr><td><code>{{ ip }}</code></td><td>{{ n }} requests</td></tr>{% else %}<tr><td style="color:var(--text-muted);">Quiet.</td></tr>{% endfor %}</tbody></table></div></div>
+<div class="card"><div class="card-header"><h2>Recent events</h2></div><div class="card-body" style="max-height:320px;overflow:auto;"><table class="data-table"><tbody>{% for e in events %}<tr><td class="text-muted" style="font-size:12px;">{{ e.ts }}</td><td><code>{{ e.ip }}</code></td><td>{{ e.detail }}</td></tr>{% else %}<tr><td style="color:var(--text-muted);">No events.</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}

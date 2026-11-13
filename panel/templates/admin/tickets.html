@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Tickets — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span> <span class="current">Tickets</span>
+{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-life-ring"></i> Support tickets</h1></div>
+<div class="card"><div class="card-body" style="overflow-x:auto;">
+    <table class="data-table"><thead><tr><th>#</th><th>User</th><th>Subject</th><th>Status</th><th>Updated</th></tr></thead><tbody>
+    {% for t in tickets %}<tr><td><a href="{{ url_for('support_ticket', tid=t.id) }}">#{{ t.id }}</a></td><td>{{ t.username or '—' }}</td><td><a href="{{ url_for('support_ticket', tid=t.id) }}">{{ t.subject }}</a></td><td>{{ t.status }}</td><td class="text-muted" style="font-size:12px;">{{ t.updated_at }}</td></tr>
+    {% else %}<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--text-muted);">No tickets.</td></tr>{% endfor %}
+    </tbody></table>
+</div></div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Profit — {{ site_name }}{% endblock %}
+{% block breadcrumb %}<span>PHvm</span> <span class="sep">›</span> <span class="current">Cost &amp; profit</span>{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas fa-scale-balanced"></i> Cost &amp; profit</h1>
+<p>Revenue comes from completed website-plan and domain orders ({{ cur }}). Enter your own monthly costs; the report assumes them to be the same every month.</p></div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:18px;">
+<div class="card"><div class="card-body"><div class="text-muted" style="font-size:12px;">Revenue (6 months)</div><div style="font-size:24px;font-weight:700;">{{ '%.2f'|format(tot_rev) }}</div></div></div>
+<div class="card"><div class="card-body"><div class="text-muted" style="font-size:12px;">Profit (6 months)</div><div style="font-size:24px;font-weight:700;">{{ '%.2f'|format(tot_profit) }}</div></div></div>
+<div class="card"><div class="card-body"><div class="text-muted" style="font-size:12px;">Monthly cost</div><div style="font-size:24px;font-weight:700;">{{ '%.2f'|format(cost) }}</div></div></div>
+<div class="card"><div class="card-body"><div class="text-muted" style="font-size:12px;">Cost per running server</div><div style="font-size:24px;font-weight:700;">{{ per if per is not none else '—' }}</div><div class="text-muted" style="font-size:12px;">{{ n }} running</div></div></div>
+</div>
+<div class="card" style="margin-bottom:18px;"><div class="card-header"><h2>Monthly</h2></div><div class="card-body">
+{% for m in months %}<div style="display:grid;grid-template-columns:70px 1fr 90px;gap:10px;align-items:center;margin:6px 0;font-size:13px;">
+<span>{{ m.m }}</span><div style="background:var(--border);border-radius:5px;height:12px;position:relative;"><div style="position:absolute;inset:0 auto 0 0;width:{{ (m.rev / mx * 100)|round|int }}%;background:var(--accent);border-radius:5px;"></div></div>
+<b style="text-align:right;">{{ '%.2f'|format(m.profit) }}</b></div>{% endfor %}
+<p class="form-hint">Bar = revenue. Number = profit after costs.</p></div></div>
+<div class="card" style="max-width:520px;"><div class="card-header"><h2>My monthly costs</h2></div><div class="card-body">
+<form method="POST"><input type="hidden" name="_csrf" value="{{ csrf_token }}">
+<div class="form-group"><label>Server / hosting</label><input class="form-control" type="number" step="0.01" min="0" name="cost_server" value="{{ f('cost_server') }}"></div>
+<div class="form-group"><label>Domains &amp; licences</label><input class="form-control" type="number" step="0.01" min="0" name="cost_domains" value="{{ f('cost_domains') }}"></div>
+<div class="form-group"><label>Other</label><input class="form-control" type="number" step="0.01" min="0" name="cost_other" value="{{ f('cost_other') }}"></div>
+<button class="btn btn-primary" type="submit">Save costs</button></form></div></div>
+{% endblock %}

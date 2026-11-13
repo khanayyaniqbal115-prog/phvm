@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Domain orders — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span> <span class="current">Domain orders</span>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-globe"></i> Domain orders</h1>
+</div>
+<div class="card">
+    <div class="card-body" style="overflow-x:auto;">
+        <p class="form-hint" style="margin:0 0 12px;">Users order a domain for their website. After you receive their payment, press <b>Approve</b>: the panel registers the domain at Spaceship (from your Spaceship balance), sets DNS and connects it to their site. Set up the shop in <a href="{{ url_for('admin_settings') }}">Settings</a>.</p>
+        <table class="data-table">
+            <thead><tr><th>Time</th><th>User</th><th>Domain</th><th>Status</th><th>Note</th><th></th></tr></thead>
+            <tbody>
+                {% for o in orders %}
+                <tr>
+                    <td class="text-muted" style="font-size:12px;">{{ o.created_at }}</td>
+                    <td>{{ o.username or '—' }}</td>
+                    <td style="font-weight:600;">{{ o.domain }}</td>
+                    <td>{{ o.status }}</td>
+                    <td class="text-secondary" style="font-size:12px;">{{ o.note or '' }}</td>
+                    <td>
+                        {% if o.status in ('pending', 'paid_failed') %}
+                        {% if o.proof %}<a href="{{ url_for('admin_proof', kind='domain', oid=o.id) }}" target="_blank" class="btn btn-secondary btn-sm">Proof</a> {% endif %}<form method="post" style="display:inline-flex;gap:6px;">
+                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                            <input type="hidden" name="id" value="{{ o.id }}">
+                            <button name="action" value="approve" class="btn btn-primary btn-sm" onclick="return confirm('Payment received? This registers {{ o.domain }} from your Spaceship balance.')">Approve</button>
+                            <button name="action" value="reject" class="btn btn-sm">Reject</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text-muted);">No domain orders yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

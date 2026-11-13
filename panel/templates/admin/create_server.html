@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Create {{ {'minecraft':'Minecraft server','web':'Web hosting site','app':'App / game server'}.get(kind, 'Bot server') }} — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>{{ site_name }}</span> <span class="sep">›</span>
+<a href="{{ url_for('admin_vms') }}">Virtual Machines</a>
+<span class="sep">›</span> <span class="current">Create {{ {'minecraft':'Minecraft','web':'Web site','app':'App / game'}.get(kind, 'Bot') }}</span>
+{% endblock %}
+{% block extra_css %}
+<style>
+.cs-card { max-width: 860px; }
+.cs-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+.cs-tabs a { padding: 9px 16px; border-radius: 10px; border: 1px solid var(--border); color: var(--text-secondary); text-decoration: none; font-weight: 600; font-size: 13px; display: inline-flex; gap: 8px; align-items: center; }
+.cs-tabs a:hover { color: var(--text-primary); border-color: var(--v-ring, var(--border)); }
+.cs-tabs a.on { background: var(--accent-dim); color: var(--text-primary); border-color: var(--v-accent, var(--accent)); }
+.cs-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.cs-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 760px) { .cs-grid, .cs-grid2 { grid-template-columns: 1fr; } }
+.cs-note { margin-bottom: 16px; padding: 10px 14px; border-radius: 10px; font-size: 13px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--text-secondary); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header"><h1><i class="fas {{ {'minecraft':'fa-cube','web':'fa-globe','app':'fa-boxes-stacked'}.get(kind, 'fa-robot') }}"></i> Create {{ {'minecraft':'Minecraft server','web':'Web hosting site','app':'App / game server'}.get(kind, 'Bot server') }}</h1>
+  <p>Creates it directly for a user — no plan or payment needed.</p></div>
+
+<div class="cs-tabs">
+  <a href="{{ url_for('create_vm') }}"><i class="fas fa-server"></i> VM</a>
+  <a href="{{ url_for('admin_create_server', kind='minecraft') }}" class="{{ 'on' if kind == 'minecraft' else '' }}"><i class="fas fa-cube"></i> Minecraft server</a>
+  <a href="{{ url_for('admin_create_server', kind='bot') }}" class="{{ 'on' if kind == 'bot' else '' }}"><i class="fas fa-robot"></i> Bot server</a>
+  <a href="{{ url_for('admin_create_server', kind='web') }}" class="{{ 'on' if kind == 'web' else '' }}"><i class="fas fa-globe"></i> Web hosting</a>
+  <a href="{{ url_for('admin_create_server', kind='app') }}" class="{{ 'on' if kind == 'app' else '' }}"><i class="fas fa-boxes-stacked"></i> Apps &amp; games</a>
+</div>
+
+<div class="cs-note">
+  {% if use_docker %}<i class="fas fa-bolt"></i> Runs as a lightweight <b>Docker container</b> — starts in seconds.
+  {% else %}<i class="fas fa-triangle-exclamation"></i> Docker isn't available on this host, so this will be created as a <b>VM</b> (slower). Install/enable Docker to use containers — see <a href="{{ url_for('admin_docker') }}">Admin → Docker servers</a>.{% endif %}
+</div>
+
+<div class="cs-card card"><div class="card-body">
+<form method="POST">
+  <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+  <input type="hidden" name="kind" value="{{ kind }}">
+
+  <div class="cs-grid2">
+    <div class="form-group"><label>Server name *</label><input class="form-control" name="name" required autocomplete="off" placeholder="{{ {'minecraft':'survival-smp','web':'my-website','app':'my-server'}.get(kind, 'my-discord-bot') }}"></div>
+    <div class="form-group"><label>Owner</label>
+      <select name="user_id" class="form-control">{% for u in users %}<option value="{{ u.id }}" {% if u.id == session.user_id %}selected{% endif %}>{{ u.username }}</option>{% endfor %}</select></div>
+  </div>
+
+  {% if kind == 'minecraft' %}
+  <div class="cs-grid">
+    <div class="form-group"><label>Software</label>
+      <select name="software" class="form-control">{% for sw in software %}<option value="{{ sw }}">{{ labels[sw] }}</option>{% endfor %}</select></div>
+    <div class="form-group"><label>Version</label><input class="form-control mono" name="version" value="latest" placeholder="latest or 1.21.4">
+      <div class="form-hint">Use <code>latest</code> or a version like <code>1.21.4</code>.</div></div>
+    <div class="form-group"><label>Connection</label>
+      <select name="connection" class="form-control">
+        <option value="direct">Direct IP : port</option>
+        <option value="minekube">Minekube Connect (free address, Paper/Purpur)</option>
+        <option value="playit">playit.gg tunnel (add key later)</option>
+      </select></div>
+  </div>
+  {% elif kind == 'app' %}
+  <div class="form-group" style="max-width:420px;"><label>App / game</label>
+    <select name="app" class="form-control" required>{% for k, a in apps.items() %}<option value="{{ k }}" {% if k == request.args.get('app') %}selected{% endif %}>{{ a.name }}{% if a.game %} (game){% endif %}</option>{% endfor %}</select>
+    <div class="form-hint">Palworld needs about 8 GB RAM or more, Hytale about 4 GB. Game servers use a UDP port that opens automatically.</div></div>
+  {% elif kind == 'web' %}
+  <div class="cs-note"><i class="fas fa-globe"></i> Creates a fresh <b>WordPress</b> site with its own database. The owner can connect a domain with free HTTPS from the site's Domains tab.</div>
+  {% else %}
+  <div class="form-group" style="max-width:320px;"><label>Runtime</label>
+    <select name="runtime" class="form-control"><option value="node">Node.js 20</option><option value="python">Python 3</option></select></div>
+  {% endif %}
+
+  <div class="cs-grid">
+    <div class="form-group"><label>RAM</label>
+      <select name="ram_mb" class="form-control">
+        {% for n in ([1024,2048,3072,4096,6144,8192,12288,16384,32768] if kind in ('minecraft', 'app') else [512,1024,2048,4096] if kind == 'web' else [256,512,1024,2048,4096]) %}
+        <option value="{{ n }}" {% if (kind == 'minecraft' and n == 4096) or (kind == 'app' and n == 4096) or (kind == 'bot' and n == 512) or (kind == 'web' and n == 1024) %}selected{% endif %}>{% if n >= 1024 %}{{ (n/1024)|round(1)|string|replace('.0','') }} GB{% else %}{{ n }} MB{% endif %}</option>{% endfor %}
+      </select></div>
+    <div class="form-group"><label>vCPU</label>
+      <select name="cpu_cores" class="form-control">{% for n in [1,2,3,4,6,8] %}<option value="{{ n }}" {% if n == (2 if kind == 'minecraft' else 1) %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+    <div class="form-group"><label>Disk</label>
+      <select name="storage_gb" class="form-control">{% for n in [1,2,5,10,20,40,80,100] %}<option value="{{ n }}" {% if n == (10 if kind in ('minecraft', 'web') else 2) %}selected{% endif %}>{{ n }} GB</option>{% endfor %}</select></div>
+  </div>
+
+  <div class="form-group" style="max-width:320px;"><label>Expires after (days)</label>
+    <input class="form-control" type="number" name="expiry_days" min="0" max="3650" value="0">
+    <div class="form-hint">0 = never expires.</div></div>
+
+  <button class="btn btn-primary" type="submit"><i class="fas fa-plus"></i> Create {{ {'minecraft':'Minecraft server','web':'Web hosting site','app':'App / game server'}.get(kind, 'Bot server') }}</button>
+</form>
+</div></div>
+{% endblock %}

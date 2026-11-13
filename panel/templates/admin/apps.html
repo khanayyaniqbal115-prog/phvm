@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}All apps & load — {{ site_name }}{% endblock %}
+{% block breadcrumb %}<span>PHvm</span> <span class="sep">›</span> <span class="current">All apps &amp; load</span>{% endblock %}
+{% block content %}
+<div class="page-header" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;"><h1><i class="fas fa-gauge-high"></i> All apps &amp; load</h1><span class="muted-note" id="sum" style="margin:0;">Loading…</span></div>
+<input class="form-control" id="q" placeholder="Search name, owner, type…" style="max-width:380px;margin-bottom:14px;" oninput="draw()">
+<div class="card"><div class="card-body" style="overflow-x:auto;"><table class="table" style="width:100%;"><thead><tr><th>Name</th><th>Owner</th><th>Type</th><th>State</th><th>CPU</th><th>RAM</th><th>Until</th></tr></thead><tbody id="tb"></tbody></table></div></div>
+{% endblock %}
+{% block extra_js %}<script>
+let D=[]; const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function draw(){const q=document.getElementById('q').value.toLowerCase();document.getElementById('tb').innerHTML=D.filter(a=>(a.name+a.owner+a.type).toLowerCase().includes(q)).map(a=>`<tr><td><a href="${esc(a.link)}">${esc(a.name)}</a></td><td>${esc(a.owner)}</td><td>${esc(a.type)}</td><td>${a.running?'Running':'Stopped'}</td><td>${a.cpu==null?'–':a.cpu+'%'}</td><td>${a.mem==null?'–':a.mem+'% of '+a.ram_mb+' MB'}</td><td>${esc(a.expiry)}</td></tr>`).join('')||'<tr><td colspan=7>Nothing here.</td></tr>'}
+async function load(){try{const d=await (await fetch('/admin/apps.json')).json();D=(d.apps||[]).sort((x,y)=>(y.cpu||0)-(x.cpu||0));document.getElementById('sum').textContent=d.running+' running of '+D.length;draw()}catch(e){document.getElementById('sum').textContent='Cannot load'}}
+load();setInterval(load,15000);
+</script>{% endblock %}

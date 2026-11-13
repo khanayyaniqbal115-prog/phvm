@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}License — {{ site_name }}{% endblock %}
+{% block breadcrumb %}
+<span>PHvm</span> <span class="sep">›</span> <span class="current">License</span>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-key"></i> License</h1>
+    <p>Activation status for this install</p>
+</div>
+
+<div class="card" style="max-width:560px;">
+    <div class="card-body form-pad">
+        <div class="form-group">
+            <label>Status</label>
+            {% if licensed %}
+            <span class="badge badge-success" style="font-size:13px;padding:6px 12px;">Activated</span>
+            {% else %}
+            <span class="badge badge-danger" style="font-size:13px;padding:6px 12px;">Not activated</span>
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label>Install ID</label>
+            <input type="text" class="form-control mono" value="{{ install_id }}" readonly>
+            <div class="form-hint">Share this with whoever provides your license key to get one generated for this install.</div>
+        </div>
+        <div class="form-group">
+            <label>Remote Check</label>
+            {% if check_status.last_check %}
+            <div class="form-hint">
+                Last checked: <span class="mono">{{ check_status.last_check }}</span> —
+                {% if check_status.last_error %}
+                <span style="color:var(--danger);">could not reach revocation server ({{ check_status.last_error }})</span>
+                {% elif check_status.last_result == 'revoked' %}
+                <span style="color:var(--danger);">this install is on the revocation list</span>
+                {% else %}
+                <span style="color:var(--success);">OK, not revoked</span>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="form-hint">No check has completed yet — happens automatically in the background.</div>
+            {% endif %}
+        </div>
+        {% if licensed %}
+        <div class="form-group">
+            <label>Activated At</label>
+            <input type="text" class="form-control mono" value="{{ activated_at }}" readonly>
+        </div>
+        <form method="POST">
+<input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="deactivate">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Deactivate this license? The panel will be locked until a valid key is entered again.')">
+                <i class="fas fa-lock"></i> Deactivate License
+            </button>
+        </form>
+        {% else %}
+        <a href="{{ url_for('license_page') }}" class="btn btn-primary"><i class="fas fa-unlock"></i> Go to Activation Page</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

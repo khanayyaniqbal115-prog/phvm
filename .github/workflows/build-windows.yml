@@ -15,6 +15,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install --legacy-peer-deps
+      - run: magick phoenix.ico -resize 256x256 phoenix.ico
       - run: npm run dist:win
       - uses: actions/upload-artifact@v4
         with:

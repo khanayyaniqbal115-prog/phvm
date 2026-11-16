@@ -2,6 +2,12 @@ name: Build Windows exe
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -15,9 +21,18 @@ jobs:
         with:
           node-version: 22
       - run: npm install --legacy-peer-deps
-      - run: magick phoenix.ico -resize 256x256 phoenix.ico
       - run: npm run dist:win
+        env:
+          # Optional code signing. Add these repository secrets if you own a certificate.
+          # Without them the exe is built unsigned (Windows will show a SmartScreen warning).
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
       - uses: actions/upload-artifact@v4
         with:
           name: Phoenix-Launcher-Windows
           path: Phoenix-Launcher/release/*.exe
+      - name: Attach to GitHub Release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Phoenix-Launcher/release/*.exe

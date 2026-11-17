@@ -1,8 +1,0 @@
-{
-  "name": "Phoenix Launcher",
-  "description": "Minecraft launcher for custom modpacks, 3D skin studio, low-end PC FPS optimization, AI diagnostics, and Windows .exe Electron packaging.",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}

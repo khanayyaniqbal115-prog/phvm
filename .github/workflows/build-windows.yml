@@ -10,7 +10,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  launcher:
+    name: Launcher (.exe)
     runs-on: windows-latest
     defaults:
       run:
@@ -23,16 +24,48 @@ jobs:
       - run: npm install --legacy-peer-deps
       - run: npm run dist:win
         env:
-          # Optional code signing. Add these repository secrets if you own a certificate.
-          # Without them the exe is built unsigned (Windows will show a SmartScreen warning).
+          # Optional code signing: add CSC_LINK and CSC_KEY_PASSWORD as repository secrets.
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      - name: Zip the installer
+        shell: pwsh
+        run: Compress-Archive -Path release/Phoenix-Launcher-Setup-*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip
       - uses: actions/upload-artifact@v4
         with:
           name: Phoenix-Launcher-Windows
-          path: Phoenix-Launcher/release/*.exe
+          path: |
+            Phoenix-Launcher/release/*.exe
+            Phoenix-Launcher/release/*.zip
       - name: Attach to GitHub Release (tag builds only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: Phoenix-Launcher/release/*.exe
+          files: |
+            Phoenix-Launcher/release/*.exe
+            Phoenix-Launcher/release/*.zip
+
+  mod:
+    name: Phoenix Client (mod jar)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: phoenix-client-mod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.12
+      - run: gradle build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phoenix-client-mod
+          path: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
+      - name: Attach to GitHub Release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar

@@ -1,0 +1,153 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --bg-canvas: #0B0E14;
+    --bg-surface: #131822;
+    --bg-elevated: #1A2130;
+    --border-hairline: rgba(255, 255, 255, 0.08);
+    --accent-phoenix: #F97316;
+    --font-display: "Outfit", system-ui, sans-serif;
+    --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-canvas);
+    color: #f1f5f9;
+    letter-spacing: 0.01em;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  .font-mono-tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom sleek dark scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B0E14;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(249, 115, 22, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Launch button effects */
+@keyframes phx-shine-move { 0% { left: -30%; } 60%, 100% { left: 130%; } }
+.phx-shine { animation: phx-shine-move 3.2s ease-in-out infinite; }
+@keyframes phx-stripes-move { to { background-position: 40px 0; } }
+.phx-stripes {
+  background-image: repeating-linear-gradient(115deg, rgba(255,255,255,.35) 0 10px, transparent 10px 20px);
+  background-size: 40px 100%;
+  animation: phx-stripes-move 0.9s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .phx-shine, .phx-stripes { animation: none; } }
+
+/* ---- Button polish (applies to every button in the launcher) ---- */
+button { transition: transform .12s ease, box-shadow .2s ease, background-color .2s ease, border-color .2s ease, color .2s ease, filter .2s ease; }
+button:not(:disabled):hover { filter: brightness(1.08); }
+button:not(:disabled):active { transform: translateY(1px) scale(.97); filter: brightness(.95); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button:focus-visible { outline: 2px solid #fdba74; outline-offset: 2px; }
+/* primary orange buttons: glow + lift */
+button.bg-orange-500:not(:disabled):hover,
+a.bg-orange-500:hover { box-shadow: 0 8px 22px rgba(249,115,22,.45); transform: translateY(-1px); }
+/* sidebar nav: active glow */
+nav button.border-orange-500\/40 { box-shadow: inset 0 0 18px rgba(249,115,22,.18), 0 0 14px rgba(249,115,22,.12); }
+nav button:not(:disabled):hover svg { transform: scale(1.12); }
+nav button svg { transition: transform .18s ease; }
+/* cards used as buttons */
+[role="button"] { transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease; }
+[role="button"]:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,.4); }
+@media (prefers-reduced-motion: reduce) { button, [role="button"] { transition: none; } }
+
+/* Launch overlay */
+@keyframes phx-orbit-spin { to { transform: rotate(360deg); } }
+.phx-orbit { animation: phx-orbit-spin 2.4s linear infinite; }
+@keyframes phx-pulse-kf { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.phx-pulse { animation: phx-pulse-kf 1.6s ease-in-out infinite; }
+@keyframes phx-fade-in-kf { from { opacity: 0; } to { opacity: 1; } }
+.phx-fade-in { animation: phx-fade-in-kf .35s ease both; }
+@media (prefers-reduced-motion: reduce) { .phx-orbit, .phx-pulse { animation: none; } }
+
+/* ---- Premium surface polish ---- */
+.phx-app {
+  background:
+    radial-gradient(1100px 560px at 85% -8%, rgba(249,115,22,.13), transparent 62%),
+    radial-gradient(900px 520px at -8% 108%, rgba(168,85,247,.10), transparent 60%),
+    radial-gradient(700px 400px at 50% 50%, rgba(56,189,248,.03), transparent 70%),
+    #080B11;
+}
+.phx-glass {
+  background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset, 0 18px 40px rgba(0,0,0,.35);
+  backdrop-filter: blur(14px);
+}
+header.sticky { backdrop-filter: blur(14px); background: rgba(8,11,17,.72) !important; }
+aside { background-image: linear-gradient(180deg, rgba(255,255,255,.03), transparent 40%); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(249,115,22,.55); background-clip: padding-box; border: 2px solid transparent; }
+::selection { background: rgba(249,115,22,.4); }
+/* panels that were flat dark cards get a subtle glass edge */
+.bg-\[\#111620\] { box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 10px 26px rgba(0,0,0,.28); }
+
+/* Accent themes: Tailwind v4 reads these variables for every orange-* utility. */
+html[data-theme="ocean"] {
+  --color-orange-200: #93c5fd; --color-orange-300: #93c5fd; --color-orange-400: #60a5fa; --color-orange-500: #3b82f6; --color-orange-600: #2563eb;
+  --accent-phoenix: #3b82f6;
+}
+html[data-theme="ocean"] button.bg-orange-500:not(:disabled):hover { box-shadow: 0 8px 22px rgba(59,130,246,.45); }
+html[data-theme="ocean"] ::selection { background: rgba(59,130,246,.4); }
+html[data-theme="violet"] {
+  --color-orange-200: #c4b5fd; --color-orange-300: #c4b5fd; --color-orange-400: #a78bfa; --color-orange-500: #8b5cf6; --color-orange-600: #7c3aed;
+  --accent-phoenix: #8b5cf6;
+}
+html[data-theme="violet"] button.bg-orange-500:not(:disabled):hover { box-shadow: 0 8px 22px rgba(139,92,246,.45); }
+html[data-theme="violet"] ::selection { background: rgba(139,92,246,.4); }
+html[data-theme="emerald"] {
+  --color-orange-200: #6ee7b7; --color-orange-300: #6ee7b7; --color-orange-400: #34d399; --color-orange-500: #10b981; --color-orange-600: #059669;
+  --accent-phoenix: #10b981;
+}
+html[data-theme="emerald"] button.bg-orange-500:not(:disabled):hover { box-shadow: 0 8px 22px rgba(16,185,129,.45); }
+html[data-theme="emerald"] ::selection { background: rgba(16,185,129,.4); }
+html[data-theme="crimson"] {
+  --color-orange-200: #fca5a5; --color-orange-300: #fca5a5; --color-orange-400: #f87171; --color-orange-500: #ef4444; --color-orange-600: #dc2626;
+  --accent-phoenix: #ef4444;
+}
+html[data-theme="crimson"] button.bg-orange-500:not(:disabled):hover { box-shadow: 0 8px 22px rgba(239,68,68,.45); }
+html[data-theme="crimson"] ::selection { background: rgba(239,68,68,.4); }
+html[data-theme="rose"] {
+  --color-orange-200: #f9a8d4; --color-orange-300: #f9a8d4; --color-orange-400: #f472b6; --color-orange-500: #ec4899; --color-orange-600: #db2777;
+  --accent-phoenix: #ec4899;
+}
+html[data-theme="rose"] button.bg-orange-500:not(:disabled):hover { box-shadow: 0 8px 22px rgba(236,72,106,.45); }
+html[data-theme="rose"] ::selection { background: rgba(236,72,106,.4); }

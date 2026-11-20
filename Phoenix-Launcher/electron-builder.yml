@@ -1,0 +1,34 @@
+appId: com.phoenixlauncher.desktop
+productName: Phoenix Launcher
+copyright: Phoenix Launcher
+directories:
+  output: release
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+  - phoenix.ico
+  - '!**/*.map'
+  - '!**/*.md'
+asar: true
+compression: maximum
+electronLanguages:
+  - en-US
+files_exclude_placeholder: null
+win:
+  icon: phoenix.ico
+  artifactName: Phoenix-Launcher-Setup-${version}.${ext}
+  executableName: Phoenix Launcher
+  requestedExecutionLevel: asInvoker
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  perMachine: false
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false

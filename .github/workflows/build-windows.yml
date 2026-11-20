@@ -1,4 +1,4 @@
-name: Build Windows exe
+name: Build Phoenix (launcher exe + client mod)
 
 on:
   workflow_dispatch:

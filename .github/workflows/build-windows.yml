@@ -1,4 +1,4 @@
-name: Build Phoenix (launcher exe + client mod)
+name: Build Phoenix (launcher exe + client mod + Android app)
 
 on:
   workflow_dispatch:
@@ -22,46 +22,20 @@ jobs:
         with:
           node-version: 22
       - run: npm install --legacy-peer-deps
-
-      - name: Auto-fix electron-builder.yml
-        shell: pwsh
-        run: |
-          if (Test-Path electron-builder.yml) {
-            (Get-Content electron-builder.yml) | Where-Object { $_ -notmatch 'files_exclude_placeholder' } | Set-Content electron-builder.yml
-          } else {
-            @"
-          appId: com.phoenix.launcher
-          productName: Phoenix-Launcher
-          directories:
-            output: release
-          win:
-            artifactName: Phoenix-Launcher-Setup-`${version}.`${ext}
-            target:
-              - target: nsis
-                arch:
-                  - x64
-          nsis:
-            oneClick: false
-            allowToChangeInstallationDirectory: true
-          "@ | Set-Content electron-builder.yml
-          }
-
       - run: npm run dist:win
-
+        env:
+          # Optional code signing: add CSC_LINK and CSC_KEY_PASSWORD as repository secrets.
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
       - name: Zip the installer
         shell: pwsh
-        run: |
-          if (Test-Path release/*.exe) {
-            Compress-Archive -Path release/*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip -Force
-          }
-
+        run: Compress-Archive -Path release/Phoenix-Launcher-Setup-*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip
       - uses: actions/upload-artifact@v4
         with:
           name: Phoenix-Launcher-Windows
           path: |
             Phoenix-Launcher/release/*.exe
             Phoenix-Launcher/release/*.zip
-
       - name: Attach to GitHub Release (tag builds only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
@@ -95,3 +69,50 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
+
+  android:
+    name: Android app (.apk)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Phoenix-Launcher
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm install --legacy-peer-deps
+      - run: npm install --no-save --legacy-peer-deps @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+      - name: Build the web UI
+        run: npx vite build
+        env:
+          # Optional: repository variable PHOENIX_API_BASE = URL of the hosted web version (for server status, etc.)
+          VITE_API_BASE: ${{ vars.PHOENIX_API_BASE }}
+      - run: npx cap add android
+      - name: Set the app icon
+        run: |
+          for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            name=${d%%:*}; size=${d##*:}
+            for f in ic_launcher ic_launcher_round ic_launcher_foreground; do
+              convert public/icon-512.png -resize ${size}x${size} android/app/src/main/res/mipmap-$name/$f.png || true
+            done
+          done
+          rm -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher*.xml || true
+      - run: npx cap sync android
+      - name: Build the APK
+        working-directory: Phoenix-Launcher/android
+        run: ./gradlew assembleDebug
+      - run: cp android/app/build/outputs/apk/debug/app-debug.apk Phoenix-Launcher-Android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Phoenix-Launcher-Android
+          path: Phoenix-Launcher/Phoenix-Launcher-Android.apk
+      - name: Attach to GitHub Release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Phoenix-Launcher/Phoenix-Launcher-Android.apk

@@ -23,13 +23,12 @@ jobs:
           node-version: 22
       - run: npm install --legacy-peer-deps
       - run: npm run dist:win
-        env:
-          # Optional code signing: add CSC_LINK and CSC_KEY_PASSWORD as repository secrets.
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
       - name: Zip the installer
         shell: pwsh
-        run: Compress-Archive -Path release/Phoenix-Launcher-Setup-*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip
+        run: |
+          if (Test-Path release/Phoenix-Launcher-Setup-*.exe) {
+            Compress-Archive -Path release/Phoenix-Launcher-Setup-*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip -Force
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: Phoenix-Launcher-Windows

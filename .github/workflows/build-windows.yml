@@ -22,19 +22,46 @@ jobs:
         with:
           node-version: 22
       - run: npm install --legacy-peer-deps
+
+      - name: Auto-fix electron-builder.yml
+        shell: pwsh
+        run: |
+          if (Test-Path electron-builder.yml) {
+            (Get-Content electron-builder.yml) | Where-Object { $_ -notmatch 'files_exclude_placeholder' } | Set-Content electron-builder.yml
+          } else {
+            @"
+          appId: com.phoenix.launcher
+          productName: Phoenix-Launcher
+          directories:
+            output: release
+          win:
+            artifactName: Phoenix-Launcher-Setup-`${version}.`${ext}
+            target:
+              - target: nsis
+                arch:
+                  - x64
+          nsis:
+            oneClick: false
+            allowToChangeInstallationDirectory: true
+          "@ | Set-Content electron-builder.yml
+          }
+
       - run: npm run dist:win
+
       - name: Zip the installer
         shell: pwsh
         run: |
-          if (Test-Path release/Phoenix-Launcher-Setup-*.exe) {
-            Compress-Archive -Path release/Phoenix-Launcher-Setup-*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip -Force
+          if (Test-Path release/*.exe) {
+            Compress-Archive -Path release/*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip -Force
           }
+
       - uses: actions/upload-artifact@v4
         with:
           name: Phoenix-Launcher-Windows
           path: |
             Phoenix-Launcher/release/*.exe
             Phoenix-Launcher/release/*.zip
+
       - name: Attach to GitHub Release (tag builds only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2

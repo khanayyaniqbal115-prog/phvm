@@ -22,20 +22,42 @@ jobs:
         with:
           node-version: 22
       - run: npm install --legacy-peer-deps
-      - run: npm run dist:win
+
+      - name: Auto-fix electron-builder.yml
+        shell: pwsh
+        run: |
+          if (Test-Path electron-builder.yml) {
+            (Get-Content electron-builder.yml) | Where-Object { $_ -notmatch 'files_exclude_placeholder' } | Set-Content electron-builder.yml
+          }
+
+      - name: Build Windows Launcher
+        shell: pwsh
         env:
-          # Optional code signing: add CSC_LINK and CSC_KEY_PASSWORD as repository secrets.
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          SECRET_CSC_LINK: ${{ secrets.CSC_LINK }}
+          SECRET_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          if ($env:SECRET_CSC_LINK) {
+            $env:CSC_LINK = $env:SECRET_CSC_LINK
+            $env:CSC_KEY_PASSWORD = $env:SECRET_CSC_KEY_PASSWORD
+          }
+          npm run dist:win
+
       - name: Zip the installer
         shell: pwsh
-        run: Compress-Archive -Path release/Phoenix-Launcher-Setup-*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip
+        run: |
+          if (Test-Path release/Phoenix-Launcher-Setup-*.exe) {
+            Compress-Archive -Path release/Phoenix-Launcher-Setup-*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip -Force
+          } elseif (Test-Path release/*.exe) {
+            Compress-Archive -Path release/*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip -Force
+          }
+
       - uses: actions/upload-artifact@v4
         with:
           name: Phoenix-Launcher-Windows
           path: |
             Phoenix-Launcher/release/*.exe
             Phoenix-Launcher/release/*.zip
+
       - name: Attach to GitHub Release (tag builds only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
@@ -90,9 +112,15 @@ jobs:
       - name: Build the web UI
         run: npx vite build
         env:
-          # Optional: repository variable PHOENIX_API_BASE = URL of the hosted web version (for server status, etc.)
           VITE_API_BASE: ${{ vars.PHOENIX_API_BASE }}
-      - run: npx cap add android
+      - name: Ensure Capacitor Config & Add Android
+        run: |
+          if [ ! -f capacitor.config.json ] && [ ! -f capacitor.config.ts ]; then
+            npx cap init "Phoenix Launcher" "com.phoenix.launcher" --web-dir dist
+          fi
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
       - name: Set the app icon
         run: |
           for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
@@ -105,7 +133,9 @@ jobs:
       - run: npx cap sync android
       - name: Build the APK
         working-directory: Phoenix-Launcher/android
-        run: ./gradlew assembleDebug
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
       - run: cp android/app/build/outputs/apk/debug/app-debug.apk Phoenix-Launcher-Android.apk
       - uses: actions/upload-artifact@v4
         with:

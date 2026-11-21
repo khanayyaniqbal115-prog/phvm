@@ -10,6 +10,32 @@ permissions:
   contents: write
 
 jobs:
+  mod:
+    name: Phoenix Client (mod jar)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: phoenix-client-mod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.12
+      - run: gradle build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phoenix-client-mod
+          path: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
+      - name: Attach to GitHub Release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
+
   launcher:
     name: Launcher (.exe)
     needs: mod
@@ -49,7 +75,7 @@ jobs:
           }
           npm run dist:win
 
-      - name: Pick ONLY 1 Installer and Zip it
+      - name: Keep ONLY 1 Launcher EXE and Zip it
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path final-out | Out-Null
@@ -73,32 +99,6 @@ jobs:
             Phoenix-Launcher/final-out/*.exe
             Phoenix-Launcher/final-out/Phoenix-Launcher-Windows.zip
 
-  mod:
-    name: Phoenix Client (mod jar)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: phoenix-client-mod
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.12
-      - run: gradle build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: phoenix-client-mod
-          path: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
-      - name: Attach to GitHub Release (tag builds only)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
-
   android:
     name: Android app (.apk)
     runs-on: ubuntu-latest
@@ -120,11 +120,8 @@ jobs:
         run: npx vite build
         env:
           VITE_API_BASE: ${{ vars.PHOENIX_API_BASE }}
-      - name: Ensure Capacitor Config & Add Android
+      - name: Add Android platform
         run: |
-          if [ ! -f capacitor.config.json ] && [ ! -f capacitor.config.ts ]; then
-            npx cap init "Phoenix Launcher" "com.phoenix.launcher" --web-dir dist
-          fi
           if [ ! -d android ]; then
             npx cap add android
           fi

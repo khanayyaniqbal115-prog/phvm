@@ -12,6 +12,7 @@ permissions:
 jobs:
   launcher:
     name: Launcher (.exe)
+    needs: mod
     runs-on: windows-latest
     defaults:
       run:
@@ -22,6 +23,12 @@ jobs:
         with:
           node-version: 22
       - run: npm install --legacy-peer-deps
+
+      - name: Bundle the Phoenix Client mod jar into the installer
+        uses: actions/download-artifact@v4
+        with:
+          name: phoenix-client-mod
+          path: Phoenix-Launcher/bundled-mod
 
       - name: Auto-fix electron-builder.yml
         shell: pwsh
@@ -135,7 +142,7 @@ jobs:
         working-directory: Phoenix-Launcher/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
       - run: cp android/app/build/outputs/apk/debug/app-debug.apk Phoenix-Launcher-Android.apk
       - uses: actions/upload-artifact@v4
         with:

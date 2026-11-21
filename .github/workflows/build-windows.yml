@@ -49,29 +49,29 @@ jobs:
           }
           npm run dist:win
 
-      - name: Zip the installer
+      - name: Pick ONLY 1 Installer and Zip it
         shell: pwsh
         run: |
-          if (Test-Path release/Phoenix-Launcher-Setup-*.exe) {
-            Compress-Archive -Path release/Phoenix-Launcher-Setup-*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip -Force
-          } elseif (Test-Path release/*.exe) {
-            Compress-Archive -Path release/*.exe -DestinationPath release/Phoenix-Launcher-Windows.zip -Force
+          New-Item -ItemType Directory -Force -Path final-out | Out-Null
+          $installer = Get-ChildItem -Path release -Filter "*Setup*.exe" -File | Select-Object -First 1
+          if (-not $installer) {
+            $installer = Get-ChildItem -Path release -Filter "*.exe" -File | Where-Object { $_.Name -notmatch 'unins|elevate' } | Select-Object -First 1
           }
+          Copy-Item $installer.FullName -Destination "final-out/$($installer.Name)"
+          Compress-Archive -Path $installer.FullName -DestinationPath "final-out/Phoenix-Launcher-Windows.zip" -Force
 
       - uses: actions/upload-artifact@v4
         with:
           name: Phoenix-Launcher-Windows
-          path: |
-            Phoenix-Launcher/release/*.exe
-            Phoenix-Launcher/release/*.zip
+          path: Phoenix-Launcher/final-out/Phoenix-Launcher-Windows.zip
 
       - name: Attach to GitHub Release (tag builds only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            Phoenix-Launcher/release/*.exe
-            Phoenix-Launcher/release/*.zip
+            Phoenix-Launcher/final-out/*.exe
+            Phoenix-Launcher/final-out/Phoenix-Launcher-Windows.zip
 
   mod:
     name: Phoenix Client (mod jar)

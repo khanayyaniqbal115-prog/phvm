@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "phoenix",
+  "version": "${version}",
+  "name": "Phoenix Client",
+  "description": "Phoenix Client for Phoenix Launcher: HUD, fast place, fullbright, animated cape, loading screen and a Phoenix-styled menu.",
+  "authors": ["Phoenix Launcher"],
+  "license": "MIT",
+  "environment": "client",
+  "mixins": ["phoenix.mixins.json"],
+  "entrypoints": {
+    "client": ["com.phoenix.client.PhoenixClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

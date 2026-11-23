@@ -1,8 +1,14 @@
 name: Build Phoenix (launcher exe + client mod + Android app)
 
+# The mod jar is compiled on every push and pull request, so a compile error shows up right away.
+# The launcher .exe and the Android .apk are heavy, so they only build on a version tag (v*) or a manual run.
 on:
   workflow_dispatch:
+  pull_request:
   push:
+    branches:
+      - main
+      - master
     tags:
       - 'v*'
 
@@ -10,35 +16,10 @@ permissions:
   contents: write
 
 jobs:
-  mod:
-    name: Phoenix Client (mod jar)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: phoenix-client-mod
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.12
-      - run: gradle build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: phoenix-client-mod
-          path: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
-      - name: Attach to GitHub Release (tag builds only)
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
-
   launcher:
     name: Launcher (.exe)
     needs: mod
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
     runs-on: windows-latest
     defaults:
       run:
@@ -85,11 +66,24 @@ jobs:
           }
           Copy-Item $installer.FullName -Destination "final-out/$($installer.Name)"
           Compress-Archive -Path $installer.FullName -DestinationPath "final-out/Phoenix-Launcher-Windows.zip" -Force
+          # Portable build: unzip anywhere and run Phoenix Launcher.exe (no installer, so SmartScreen asks less)
+          $unpacked = Join-Path "release" "win-unpacked"
+          if (Test-Path $unpacked) {
+            Compress-Archive -Path (Join-Path $unpacked "*") -DestinationPath "final-out/Phoenix-Launcher-Portable.zip" -Force
+          }
+          # SHA-256 checksums so players can check their download is the real file
+          Get-ChildItem final-out -File | Where-Object { $_.Name -ne 'SHA256SUMS.txt' } | ForEach-Object {
+            $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$h  $($_.Name)"
+          } | Set-Content -Encoding ascii final-out/SHA256SUMS.txt
 
       - uses: actions/upload-artifact@v4
         with:
           name: Phoenix-Launcher-Windows
-          path: Phoenix-Launcher/final-out/Phoenix-Launcher-Windows.zip
+          path: |
+            Phoenix-Launcher/final-out/Phoenix-Launcher-Windows.zip
+            Phoenix-Launcher/final-out/Phoenix-Launcher-Portable.zip
+            Phoenix-Launcher/final-out/SHA256SUMS.txt
 
       - name: Attach to GitHub Release (tag builds only)
         if: startsWith(github.ref, 'refs/tags/')
@@ -98,9 +92,38 @@ jobs:
           files: |
             Phoenix-Launcher/final-out/*.exe
             Phoenix-Launcher/final-out/Phoenix-Launcher-Windows.zip
+            Phoenix-Launcher/final-out/Phoenix-Launcher-Portable.zip
+            Phoenix-Launcher/final-out/SHA256SUMS.txt
+
+  mod:
+    name: Phoenix Client (mod jar)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: phoenix-client-mod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.12
+      - run: gradle build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: phoenix-client-mod
+          path: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
+      - name: Attach to GitHub Release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
 
   android:
     name: Android app (.apk)
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -119,6 +142,7 @@ jobs:
       - name: Build the web UI
         run: npx vite build
         env:
+          # Optional: repository variable PHOENIX_API_BASE = URL of the hosted web version (for server status, etc.)
           VITE_API_BASE: ${{ vars.PHOENIX_API_BASE }}
       - name: Add Android platform
         run: |
@@ -159,3 +183,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: Phoenix-Launcher/Phoenix-Launcher-Android.apk
+  

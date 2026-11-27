@@ -183,4 +183,3 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: Phoenix-Launcher/Phoenix-Launcher-Android.apk
-  

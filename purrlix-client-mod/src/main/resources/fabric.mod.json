@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "purrlix",
+  "version": "${version}",
+  "name": "Purrlix Client",
+  "description": "Purrlix Client for Purrlix Launcher: HUD, fast place, fullbright, animated cape, loading screen and a Purrlix-styled menu.",
+  "authors": ["Purrlix Launcher"],
+  "license": "MIT",
+  "environment": "client",
+  "mixins": ["purrlix.mixins.json"],
+  "entrypoints": {
+    "client": ["com.purrlix.client.PurrlixClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

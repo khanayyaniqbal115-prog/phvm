@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#09060F" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta property="og:image" content="/icon-512.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Purrlix Launcher — Modpacks, 3D Skin Studio &amp; FPS Optimizer</title>
+    <meta
+      name="description"
+      content="Minecraft launcher for custom modpacks, 3D skin studio, low-end PC FPS optimization, AI diagnostics, and Windows .exe Electron packaging."
+    />
+    <meta property="og:title" content="Purrlix Launcher" />
+    <meta
+      property="og:description"
+      content="Manage custom Minecraft modpacks, inspect and paint 3D player skins, tune low-end PC FPS presets, and export a Windows .exe wrapper."
+    />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+      <script>if("serviceWorker"in navigator&&location.protocol.startsWith("http")&&!navigator.userAgent.includes("Electron"))addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))</script>
+  </head>
+  <body class="bg-[#09060F] text-slate-100 antialiased selection:bg-orange-500/30 selection:text-orange-100">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

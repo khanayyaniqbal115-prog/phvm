@@ -1,0 +1,39 @@
+appId: com.phoenixlauncher.desktop
+productName: Purrlix Launcher
+copyright: Purrlix Launcher
+directories:
+  output: release
+files:
+  - dist/**/*
+  - electron/**/*
+  - package.json
+  - purrlix.ico
+  - '!**/*.map'
+  - '!**/*.md'
+extraResources:
+  - from: bundled-mod
+    to: mod
+    filter:
+      - '*.jar'
+asar: true
+compression: maximum
+electronLanguages:
+  - en-US
+win:
+  icon: purrlix.ico
+  artifactName: Purrlix-Launcher-Setup-${version}.${ext}
+  executableName: Purrlix Launcher
+  requestedExecutionLevel: asInvoker
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  perMachine: false
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  include: build/installer.nsh

@@ -1,4 +1,4 @@
-name: Build Phoenix (launcher exe + client mod + Android app)
+name: Build Purrlix (launcher exe + client mod + Android app)
 
 # The mod jar is compiled on every push and pull request, so a compile error shows up right away.
 # The launcher .exe and the Android .apk are heavy, so they only build on a version tag (v*) or a manual run.
@@ -23,7 +23,7 @@ jobs:
     runs-on: windows-latest
     defaults:
       run:
-        working-directory: Phoenix-Launcher
+        working-directory: Purrlix-Launcher
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,11 +31,11 @@ jobs:
           node-version: 22
       - run: npm install --legacy-peer-deps
 
-      - name: Bundle the Phoenix Client mod jar into the installer
+      - name: Bundle the Purrlix Client mod jar into the installer
         uses: actions/download-artifact@v4
         with:
-          name: phoenix-client-mod
-          path: Phoenix-Launcher/bundled-mod
+          name: purrlix-client-mod
+          path: Purrlix-Launcher/bundled-mod
 
       - name: Auto-fix electron-builder.yml
         shell: pwsh
@@ -65,11 +65,11 @@ jobs:
             $installer = Get-ChildItem -Path release -Filter "*.exe" -File | Where-Object { $_.Name -notmatch 'unins|elevate' } | Select-Object -First 1
           }
           Copy-Item $installer.FullName -Destination "final-out/$($installer.Name)"
-          Compress-Archive -Path $installer.FullName -DestinationPath "final-out/Phoenix-Launcher-Windows.zip" -Force
-          # Portable build: unzip anywhere and run Phoenix Launcher.exe (no installer, so SmartScreen asks less)
+          Compress-Archive -Path $installer.FullName -DestinationPath "final-out/Purrlix-Launcher-Windows.zip" -Force
+          # Portable build: unzip anywhere and run Purrlix Launcher.exe (no installer, so SmartScreen asks less)
           $unpacked = Join-Path "release" "win-unpacked"
           if (Test-Path $unpacked) {
-            Compress-Archive -Path (Join-Path $unpacked "*") -DestinationPath "final-out/Phoenix-Launcher-Portable.zip" -Force
+            Compress-Archive -Path (Join-Path $unpacked "*") -DestinationPath "final-out/Purrlix-Launcher-Portable.zip" -Force
           }
           # SHA-256 checksums so players can check their download is the real file
           Get-ChildItem final-out -File | Where-Object { $_.Name -ne 'SHA256SUMS.txt' } | ForEach-Object {
@@ -79,28 +79,28 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Phoenix-Launcher-Windows
+          name: Purrlix-Launcher-Windows
           path: |
-            Phoenix-Launcher/final-out/Phoenix-Launcher-Windows.zip
-            Phoenix-Launcher/final-out/Phoenix-Launcher-Portable.zip
-            Phoenix-Launcher/final-out/SHA256SUMS.txt
+            Purrlix-Launcher/final-out/Purrlix-Launcher-Windows.zip
+            Purrlix-Launcher/final-out/Purrlix-Launcher-Portable.zip
+            Purrlix-Launcher/final-out/SHA256SUMS.txt
 
       - name: Attach to GitHub Release (tag builds only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            Phoenix-Launcher/final-out/*.exe
-            Phoenix-Launcher/final-out/Phoenix-Launcher-Windows.zip
-            Phoenix-Launcher/final-out/Phoenix-Launcher-Portable.zip
-            Phoenix-Launcher/final-out/SHA256SUMS.txt
+            Purrlix-Launcher/final-out/*.exe
+            Purrlix-Launcher/final-out/Purrlix-Launcher-Windows.zip
+            Purrlix-Launcher/final-out/Purrlix-Launcher-Portable.zip
+            Purrlix-Launcher/final-out/SHA256SUMS.txt
 
   mod:
-    name: Phoenix Client (mod jar)
+    name: Purrlix Client (mod jar)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: phoenix-client-mod
+        working-directory: purrlix-client-mod
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -113,13 +113,13 @@ jobs:
       - run: gradle build
       - uses: actions/upload-artifact@v4
         with:
-          name: phoenix-client-mod
-          path: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
+          name: purrlix-client-mod
+          path: purrlix-client-mod/build/libs/purrlix-client-*[0-9].jar
       - name: Attach to GitHub Release (tag builds only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: phoenix-client-mod/build/libs/phoenix-client-*[0-9].jar
+          files: purrlix-client-mod/build/libs/purrlix-client-*[0-9].jar
 
   android:
     name: Android app (.apk)
@@ -127,7 +127,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: Phoenix-Launcher
+        working-directory: Purrlix-Launcher
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -160,7 +160,7 @@ jobs:
           rm -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher*.xml || true
       - run: npx cap sync android
       - name: Build the APK
-        working-directory: Phoenix-Launcher/android
+        working-directory: Purrlix-Launcher/android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
@@ -170,16 +170,16 @@ jobs:
         with:
           name: android-build-reports
           path: |
-            Phoenix-Launcher/android/app/build/reports
-            Phoenix-Launcher/android/build/reports
+            Purrlix-Launcher/android/app/build/reports
+            Purrlix-Launcher/android/build/reports
           if-no-files-found: ignore
-      - run: cp android/app/build/outputs/apk/debug/app-debug.apk Phoenix-Launcher-Android.apk
+      - run: cp android/app/build/outputs/apk/debug/app-debug.apk Purrlix-Launcher-Android.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Phoenix-Launcher-Android
-          path: Phoenix-Launcher/Phoenix-Launcher-Android.apk
+          name: Purrlix-Launcher-Android
+          path: Purrlix-Launcher/Purrlix-Launcher-Android.apk
       - name: Attach to GitHub Release (tag builds only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: Phoenix-Launcher/Phoenix-Launcher-Android.apk
+          files: Purrlix-Launcher/Purrlix-Launcher-Android.apk

@@ -1,0 +1,7 @@
+{
+  "appId": "com.phoenixlauncher.mobile",
+  "appName": "Phoenix Launcher",
+  "webDir": "dist",
+  "backgroundColor": "#0B0E14",
+  "android": { "allowMixedContent": false }
+}
